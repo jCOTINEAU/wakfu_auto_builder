@@ -1,0 +1,14 @@
+{
+    "files": ["main.py",
+    "wakutils.py",
+    "solver.py",
+    "settings.py",
+    "wakfuitemlist.py",
+    "views/mainPage.qml",
+    "views/ConstraintPage.qml",
+    "views/ConstraintSelector.qml",
+    "views/Resultitem.qml",
+    "wakfuItemDetail.py",
+    "wakfuConstraintSelector.py",
+    "views/ConstraintGrid.qml"]
+}
