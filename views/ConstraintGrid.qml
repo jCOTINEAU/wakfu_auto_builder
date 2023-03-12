@@ -7,7 +7,6 @@ Item {
     anchors.fill: parent
 
     Button {
-        z : 1
         anchors {
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
@@ -26,6 +25,7 @@ Item {
 
         id: constraintGrid
         anchors.fill: parent
+        columns: (parent.width/250).toFixed(1)
 
         Repeater {
             model: constraintModel
@@ -99,6 +99,62 @@ Item {
             ListElement {
                 constraintName: 'dodgeSelector'
                 textValue: "esquive >= "
+            }
+            ListElement {
+                constraintName: 'rarityCommonSelector'
+                defaultValue: '1'
+                textValue: "commun == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'white'
+            }
+            ListElement {
+                constraintName: 'rarityRareSelector'
+                defaultValue: '1'
+                textValue: "rare == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'green'
+            }
+            ListElement {
+                constraintName: 'rarityMythicalSelector'
+                defaultValue: '1'
+                textValue: "mythique == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'orange'
+            }
+            ListElement {
+                constraintName: 'rarityLengendarySelector'
+                defaultValue: '1'
+                textValue: "legendaire == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'khaki'
+            }
+            ListElement {
+                constraintName: 'rarityMemorySelector'
+                defaultValue: '1'
+                textValue: "souvenir == "
+                constraintColor: 'lightblue'
+                customMax: 1
+                customMin: 0
+            }
+            ListElement {
+                constraintName: 'rarityEpicSelector'
+                defaultValue: '1'
+                textValue: "epique == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'purple'
+            }
+            ListElement {
+                constraintName: 'rarityRelicSelector'
+                defaultValue: '1'
+                textValue: "relique == "
+                customMax: 1
+                customMin: 0
+                constraintColor: 'fuchsia'
             }
         }
 

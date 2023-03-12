@@ -4,7 +4,9 @@ Rectangle {
     required property string textValue
     required property string constraintName
     required property string constraintColor
-    property int min
+    required property string defaultValue
+    required property int customMin
+    required property int customMax
 
     color: 'lightgrey'
     height: localText.height
@@ -21,7 +23,7 @@ Rectangle {
         }
 
         onDoubleClicked: {
-            localInput.text=''
+            localInput.text = defaultValue ? defaultValue : ''
         }
     }
 
@@ -40,10 +42,11 @@ Rectangle {
         font.pointSize: 25
         color: constraintColor ? constraintColor : 'black'
 
+        text: defaultValue ? defaultValue : ''
         anchors.left: localText.right
         anchors.bottom: localText.bottom
         anchors.top: localText.AlignHCenter
-        validator: IntValidator{bottom: min ? min : 0}
+        validator: IntValidator{bottom: customMin; top:customMax ? customMax : 9999}
 
         onTextChanged: {
             constraintSelectorModel.setConstraintValue(constraintName,text)

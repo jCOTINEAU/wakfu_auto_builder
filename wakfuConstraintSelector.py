@@ -74,7 +74,6 @@ class WakfuConstraintSelector(QObject):
             'willSelector': [simpleActionEnum.WILL_ADD,simpleActionEnum.WILL_MINUS],
             'blockSelector': [simpleActionEnum.BLOCK_ADD,simpleActionEnum.BLOCK_MINUS],
             'lockSelector': [simpleActionEnum.LOCK_ADD,simpleActionEnum.LOCK_MINUS],
-            'dodgeSelector': [simpleActionEnum.DODGE_ADD,simpleActionEnum.DODGE_MINUS],
         }
 
         for key,value in partialConstraintEnum.items():
@@ -93,14 +92,44 @@ class WakfuConstraintSelector(QObject):
 
         settings.VARIABLES={}
 
+        rarity = [
+         rarityEnum.WHITE if self.constraintValueFromUi.get('rarityCommonSelector',0) == 1 else -1,
+         rarityEnum.GREEN if self.constraintValueFromUi.get('rarityRareSelector',0) == 1 else -1,
+         rarityEnum.ORANGE if self.constraintValueFromUi.get('rarityMythicalSelector',0) == 1 else -1,
+         rarityEnum.LEGENDARY if self.constraintValueFromUi.get('rarityLengendarySelector',0) == 1 else -1,
+         rarityEnum.BLUE if self.constraintValueFromUi.get('rarityMemorySelector',0) == 1 else -1,
+         rarityEnum.EPIC if self.constraintValueFromUi.get('rarityEpicSelector',0) == 1 else -1,
+         rarityEnum.RELIC if self.constraintValueFromUi.get('rarityRelicSelector',0) == 1 else -1,
+        ]
+
         for key,item in settings.ITEMS_DATA.items():
            # remove shards from item list so far
-           if item['definition']['item'].get('shardsParameters',0) == 0:
-            settings.VARIABLES[key]=self.solver.BoolVar(item['title']['fr']+str(item['definition']['item']['id']))
+           if item['definition']['item'].get('shardsParameters',0) != 0:
+               continue
+           if item['definition']['item']['level'] >= self.constraintValueFromUi.get('levelSelector',230) :
+               continue
+
+           if item['definition']['item']['baseParameters']['rarity'] not in rarity:
+               continue
+
+           settings.VARIABLES[key]=self.solver.BoolVar(item['title']['fr']+str(item['definition']['item']['id']))
+
 
         self.setCompleteConstraints()
         self.setPartialSimpleAddSubstractConstraints()
         self.setConstraints()
+
+        for constraint in self.completeConstraints:
+            self.solver.Add(constraint)
+
+        for key,constraint in self.partialSimpleAddSubstractConstraints.items():
+            self.solver.Add(constraint >= self.constraintValueFromUi.get(key,0))
+
+        self.solver.Maximize(createSimpleAddSubstractConstraint(simpleActionEnum.FIRE_MASTERY_ADD,simpleActionEnum.FIRE_MASTERY_MINUS)+
+            createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS)+
+            createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS)
+            )
+
 
     def __init__(self,parent=None):
         super().__init__(parent=parent)
@@ -118,18 +147,6 @@ class WakfuConstraintSelector(QObject):
 
         self.initSolver()
 
-        for constraint in self.completeConstraints:
-            self.solver.Add(constraint)
-
-        for key,constraint in self.partialSimpleAddSubstractConstraints.items():
-            self.solver.Add(constraint >= self.constraintValueFromUi.get(key,0))
-
-        self.solver.Maximize(createSimpleAddSubstractConstraint(simpleActionEnum.FIRE_MASTERY_ADD,simpleActionEnum.FIRE_MASTERY_MINUS)+
-            createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS)+
-            createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS)
-            )
-
-        print(len(self.solver.constraints()))
         status = self.solver.Solve()
 
         myList = []
