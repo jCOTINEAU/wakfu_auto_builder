@@ -14,10 +14,12 @@ ApplicationWindow {
     id: mainPage
 
     ConstraintGrid {
+        id: constraintPage
         visible: true
     }
 
     Resultitem {
+        id: resultPage
         visible: false
     }
 

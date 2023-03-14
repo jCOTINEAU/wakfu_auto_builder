@@ -1,6 +1,5 @@
 import settings
 from wakutils import setupJson
-from solver import solve
 
 import sys
 from PySide6.QtQml import QQmlApplicationEngine

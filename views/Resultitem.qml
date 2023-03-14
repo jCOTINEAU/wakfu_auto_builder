@@ -26,7 +26,7 @@ Item {
                 width: itemDetail.width
                 height: childrenRect.height
                 Text {
-                    text: qsTr(wakPropertyName+" : " +wakPropertyValue)
+                    text: qsTr(effect)
                 }
             }
         }
@@ -36,11 +36,12 @@ Item {
             id : wakItemList
             anchors.fill: parent
             model: WakfuItemList {}
+            onVisibleChanged: model.reload()
 
             delegate: Text {
                 text: itemName
                 property int itemNameId: itemId
-                font.pixelSize: leftPane.height/16
+                font.pixelSize: leftPane.height/14
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -48,6 +49,10 @@ Item {
                         var leftPanePos = mapToItem(leftPane,mouseX,mouseY)
                         itemDetail.y=leftPanePos.y
                         itemDetail.model.setItemId(itemId)
+                        itemDetail.visible= true
+                    }
+                    onExited: {
+                        itemDetail.visible= false
                     }
                 }
             }

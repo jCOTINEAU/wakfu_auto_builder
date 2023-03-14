@@ -1,7 +1,6 @@
 # This Python file uses the following encoding: utf-8
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject,Signal,Qt,QAbstractListModel,QModelIndex,QByteArray
-from solver import solve
 
 import settings
 
@@ -42,3 +41,10 @@ class WakfuItemList(QAbstractListModel):
         else:
             ret = None
         return ret
+
+    @Slot()
+    def reload(self):
+        self.beginResetModel()
+        self.itemList = settings.OPTIMIZED_ITEM_LIST
+        self.endResetModel()
+

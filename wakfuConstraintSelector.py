@@ -10,6 +10,7 @@ from settings import simpleActionEnum
 from settings import paramsActionEnum
 from solver import createConstraintWithFunc,getEquipmentType,getRarity,getWaeponType,createSimpleAddSubstractConstraint,createParamsConstraint,createLevelConstraint
 from ortools.linear_solver import pywraplp
+import math
 
 
 QML_IMPORT_NAME = "wakfuConstraintSelector"
@@ -125,9 +126,27 @@ class WakfuConstraintSelector(QObject):
         for key,constraint in self.partialSimpleAddSubstractConstraints.items():
             self.solver.Add(constraint >= self.constraintValueFromUi.get(key,0))
 
-        self.solver.Maximize(createSimpleAddSubstractConstraint(simpleActionEnum.FIRE_MASTERY_ADD,simpleActionEnum.FIRE_MASTERY_MINUS)+
-            createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS)+
-            createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS)
+        target = -((self.constraintValueFromUi.get('resSelector',0)/100)-1)
+        resNumber = math.log(target,0.8)*100
+
+        self.solver.Add(
+        createSimpleAddSubstractConstraint(simpleActionEnum.FIRE_RES_ADD,simpleActionEnum.FIRE_RES_MINUS)+
+        createSimpleAddSubstractConstraint(simpleActionEnum.EARTH_RES_ADD,simpleActionEnum.EARTH_RES_MINUS)+
+        createSimpleAddSubstractConstraint(simpleActionEnum.WATER_RES_ADD,simpleActionEnum.WATER_RES_MINUS)+
+        createSimpleAddSubstractConstraint(simpleActionEnum.AIR_RES_ADD,simpleActionEnum.AIR_RES_MINUS)+
+        createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_RES_ADD,simpleActionEnum.ELEM_RES_MINUS_UNCAPED)*4 +
+        150*4+
+        createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_RES_ADD,paramsActionEnum.RANDOM_NUMBER_RES_MINUS,4) >= resNumber*4)
+
+        self.solver.Maximize(
+            createSimpleAddSubstractConstraint(simpleActionEnum.AIR_MASTERY_ADD,simpleActionEnum.AIR_MASTERY_MINUS)+
+            createSimpleAddSubstractConstraint(simpleActionEnum.WATER_MASTERY_ADD,simpleActionEnum.WATER_MASTERY_MINUS)+
+            createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS)*2 +
+            createSimpleAddSubstractConstraint(simpleActionEnum.MONO_MASTERY_ADD,simpleActionEnum.MONO_MASTERY_MINUS)*2 +
+            createSimpleAddSubstractConstraint(simpleActionEnum.MELEE_MASTERY_ADD,simpleActionEnum.MELEE_MASTERY_MINUS)*2 +
+            createSimpleAddSubstractConstraint(simpleActionEnum.BACK_MASTERY_ADD,simpleActionEnum.BACK_MASTERY_MINUS)*2 +
+            createSimpleAddSubstractConstraint(simpleActionEnum.CRIT_MASTERY_ADD,simpleActionEnum.CRIT_MASTERY_MINUS)*2 +
+            createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS,2)
             )
 
 
@@ -139,7 +158,7 @@ class WakfuConstraintSelector(QObject):
     @Slot(str,int, result=bool)
     def setConstraintValue(self,name,constraintValue):
         self.constraintValueFromUi[name]=constraintValue
-        print(self.constraintValueFromUi[name])
+#        print(self.constraintValueFromUi[name])
 
 
     @Slot()

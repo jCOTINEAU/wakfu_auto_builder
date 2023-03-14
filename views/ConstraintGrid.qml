@@ -15,7 +15,11 @@ Item {
         id: solveButton
         text: 'Solve'
         font.pointSize: 25
-        onClicked: constraintSelectorModel.solve()
+        onClicked: {
+            constraintSelectorModel.solve()
+            resultPage.visible= true
+            constraintPage.visible= false
+        }
     }
 
     Grid {
@@ -99,6 +103,11 @@ Item {
             ListElement {
                 constraintName: 'dodgeSelector'
                 textValue: "esquive >= "
+            }
+            ListElement {
+                constraintName: 'resSelector'
+                textValue: "resistance >= "
+                customMax: 100
             }
             ListElement {
                 constraintName: 'rarityCommonSelector'
