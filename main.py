@@ -7,7 +7,9 @@ from PySide6.QtGui import QGuiApplication
 from wakfuitemlist import WakfuItemList
 from wakfuItemDetail import WakfuItemDetail
 from wakfuConstraintSelector import WakfuConstraintSelector
-
+from wakfuItemStatSum import WakfuItemStatSum
+from wakfuConstraintSelectorTemplate import WakfuConstraintSelectorTemplate
+from constraint import Constraint
 
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject

@@ -3,7 +3,6 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject,Signal,Qt,QAbstractListModel,QModelIndex,QByteArray
 
 import settings
-import re
 from settings import simpleActionEnum
 from settings import paramsActionEnum
 from solver import getEquipEffectValue
@@ -23,8 +22,6 @@ class WakfuItemDetail(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.itemDetails = []
-
-        self.itemDetails.append({'effect': 'value'})
 
 
     def rowCount(self, parent=QModelIndex()):

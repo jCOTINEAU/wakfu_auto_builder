@@ -1,12 +1,7 @@
 import QtQuick 2.12
+import QtQuick.Controls 2.12
 
 Rectangle {
-    required property string textValue
-    required property string constraintName
-    required property string constraintColor
-    required property string defaultValue
-    required property int customMin
-    required property int customMax
 
     color: 'lightgrey'
     height: localText.height
@@ -23,35 +18,33 @@ Rectangle {
         }
 
         onDoubleClicked: {
-            localInput.text = defaultValue ? defaultValue : ''
+            localInput.text=defaultValue
         }
     }
 
     Text {
         id: localText
-        text: qsTr(textValue)
+        text: qsTr(customText)
         font.pointSize: 25
 
     }
-
-
     TextInput {
         id: localInput
         z: parent.z +1
 
         font.pointSize: 25
-        color: constraintColor ? constraintColor : 'black'
+        color: customColor
 
-        text: defaultValue ? defaultValue : ''
         anchors.left: localText.right
         anchors.bottom: localText.bottom
         anchors.top: localText.AlignHCenter
-        validator: IntValidator{bottom: customMin; top:customMax ? customMax : 9999}
+        validator: IntValidator{bottom: customMin; top:customMax}
+
+        Component.onCompleted: text=defaultValue!=0 ? defaultValue : ''
 
         onTextChanged: {
-            constraintSelectorModel.setConstraintValue(constraintName,text)
+            value = text ==='' ? 0:text
         }
-
     }
 
 }

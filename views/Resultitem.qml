@@ -2,10 +2,27 @@ import QtQuick 2.12
 import QtQuick.Controls 2.12
 import WakfuItemList
 import WakfuItemDetail
+import WakfuItemStatSum
 
 Item {
     anchors.fill: parent
     id: resultItem
+
+    Button {
+        anchors {
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+        }
+
+        z:1
+        id: goToConstraintButton
+        text: 'go back to constraint'
+        font.pointSize: 25
+        onClicked: {
+            resultPage.visible= false
+            constraintPage.visible= true
+        }
+    }
 
     Rectangle {
         id: leftPane
@@ -22,11 +39,12 @@ Item {
             height: 100*count
             delegate:
                 Rectangle {
-                color: 'white'
+                color: index%2==0 ? 'lightgrey':'lightblue'
                 width: itemDetail.width
                 height: childrenRect.height
                 Text {
                     text: qsTr(effect)
+                    font.pointSize: leftPane.height/40
                 }
             }
         }
@@ -41,7 +59,7 @@ Item {
             delegate: Text {
                 text: itemName
                 property int itemNameId: itemId
-                font.pixelSize: leftPane.height/14
+                font.pointSize: leftPane.height/30
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -59,23 +77,6 @@ Item {
         }
     }
 
-
-    ListModel {
-        id: nameModel
-        ListElement { name: "Pa"; value: 6 ; delegateColor: "blue" }
-        ListElement { name: "Pm"; value: 5 ; delegateColor: "green" }
-        ListElement { name: "Po"; value: 2 ; delegateColor: "black" }
-        ListElement { name: "Pw"; value: 2 ; delegateColor: "lightBlue" }
-    }
-    Component {
-        id: nameDelegate
-        Text {
-            text: name+' : '+value;
-            font.pixelSize: mainPage.height/20
-            color: delegateColor
-        }
-    }
-
     Rectangle {
         id: rightPane
 
@@ -87,41 +88,19 @@ Item {
         anchors.right: parent.right
         anchors.left: leftPane.right
 
-
-        Rectangle {
-            id: mainStatRow
-
-            height: parent.height/10
-            border.color: 'green'
-
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            ListView {
-                orientation: ListView.Horizontal
-                anchors.fill: parent
-                spacing: 30
-                clip: true
-                model: nameModel
-                delegate: nameDelegate
-            }
-        }
-        Rectangle {
-            id: masteryStatRow
-            height: parent.height/6
-            border.width: 2
-
-            anchors.top: mainStatRow.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            GridView {
-                anchors.fill: parent
-                model: nameModel
-                delegate: nameDelegate
-                cellWidth: parent.width/2
-                cellHeight: parent.height/2
+        ListView {
+            id: itemSumDetail
+            anchors.fill: parent
+            model: WakfuItemStatSum {}
+            onVisibleChanged: model.reload()
+            delegate: Rectangle {
+                color: index%2==0 ? 'lightgrey':'lightblue'
+                width: itemDetail.width
+                height: childrenRect.height
+                Text {
+                    text: qsTr(effect)
+                    font.pointSize: rightPane.height/40
+                }
             }
         }
     }

@@ -9,5 +9,10 @@
     "views/Resultitem.qml",
     "wakfuItemDetail.py",
     "wakfuConstraintSelector.py",
-    "views/ConstraintGrid.qml"]
+    "views/ConstraintGrid.qml",
+    "wakfuItemStatSum.py",
+    "wakfuConstraintSelectorTemplate.py",
+    "constraint.py",
+    "views/MaximizeConstraintSelector.qml",
+    "views/MaximizeRatioConstraintSelector.qml"]
 }

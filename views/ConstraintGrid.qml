@@ -1,6 +1,7 @@
 import QtQuick 2.12
 import QtQuick.Controls
 import wakfuConstraintSelector
+import WakfuConstraintSelectorTemplate
 
 
 Item {
@@ -22,150 +23,98 @@ Item {
         }
     }
 
-    Grid {
-        WakfuConstraintSelector {
-            id: constraintSelectorModel
-        }
+    WakfuConstraintSelector {
+        id: constraintSelectorModel
+    }
 
+    Grid {
         id: constraintGrid
-        anchors.fill: parent
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+
+        }
         columns: (parent.width/250).toFixed(1)
 
         Repeater {
-            model: constraintModel
+            model: constraintSelectorModel.getConstraintModel()
             delegate: ConstraintSelector {}
         }
 
-        ListModel {
-            id: constraintModel
+    }
 
-            ListElement {
-                constraintName: 'levelSelector'
-                textValue: "level <= "
-            }
-            ListElement {
-                constraintColor: 'red'
-                constraintName: 'pvSelector'
-                textValue: "PV >= "
-            }
-            ListElement {
-                constraintColor: 'blue'
-                constraintName: 'paSelector'
-                textValue: "PA >= "
-            }
-            ListElement {
-                constraintColor: 'green'
-                constraintName: 'pmSelector'
-                textValue: "PM >= "
-            }
-            ListElement {
-                constraintColor: 'steelblue'
-                constraintName: 'pwSelector'
-                textValue: "PW >= "
-            }
-            ListElement {
-                constraintColor: 'yellow'
-                constraintName: 'pcSelector'
-                textValue: "PC >= "
-            }
-            ListElement {
-                constraintName: 'iniSelector'
-                textValue: "initiative >= "
-            }
-            ListElement {
-                constraintName: 'ccSelector'
-                textValue: "chance CC >= "
-            }
-            ListElement {
-                constraintName: 'dodgeSelector'
-                textValue: "esquive >= "
-            }
-            ListElement {
-                constraintName: 'wisdomSelector'
-                textValue: "sagesse >= "
-            }
-            ListElement {
-                constraintName: 'ppSelector'
-                textValue: "prospection >= "
-            }
-            ListElement {
-                constraintName: 'willSelector'
-                textValue: "volonté >= "
-            }
-            ListElement {
-                constraintName: 'blockSelector'
-                textValue: "parade >= "
-            }
-            ListElement {
-                constraintName: 'lockSelector'
-                textValue: "tacle >= "
-            }
-            ListElement {
-                constraintName: 'dodgeSelector'
-                textValue: "esquive >= "
-            }
-            ListElement {
-                constraintName: 'resSelector'
-                textValue: "resistance >= "
-                customMax: 100
-            }
-            ListElement {
-                constraintName: 'rarityCommonSelector'
-                defaultValue: '1'
-                textValue: "commun == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'white'
-            }
-            ListElement {
-                constraintName: 'rarityRareSelector'
-                defaultValue: '1'
-                textValue: "rare == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'green'
-            }
-            ListElement {
-                constraintName: 'rarityMythicalSelector'
-                defaultValue: '1'
-                textValue: "mythique == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'orange'
-            }
-            ListElement {
-                constraintName: 'rarityLengendarySelector'
-                defaultValue: '1'
-                textValue: "legendaire == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'khaki'
-            }
-            ListElement {
-                constraintName: 'rarityMemorySelector'
-                defaultValue: '1'
-                textValue: "souvenir == "
-                constraintColor: 'lightblue'
-                customMax: 1
-                customMin: 0
-            }
-            ListElement {
-                constraintName: 'rarityEpicSelector'
-                defaultValue: '1'
-                textValue: "epique == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'purple'
-            }
-            ListElement {
-                constraintName: 'rarityRelicSelector'
-                defaultValue: '1'
-                textValue: "relique == "
-                customMax: 1
-                customMin: 0
-                constraintColor: 'fuchsia'
-            }
+    Rectangle {
+        id: seperatorMaximize
+        width: parent.width
+        height: childrenRect.height
+        border.width: 1
+
+        anchors {
+            top:constraintGrid.bottom
         }
 
+        Text {
+            text: qsTr("Maximize mastery section")
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+    }
+
+    Grid {
+        id: maximizeMasteryGrid
+        anchors {
+            top: seperatorMaximize.bottom
+            left: seperatorMaximize.left
+            right: seperatorMaximize.right
+        }
+
+        Repeater {
+            model: constraintSelectorModel.getElemMasteryMaximizeModel()
+            delegate: MaximizeConstraintSelector {}
+        }
+    }
+
+    Grid {
+        id: maximizeOtherMasteryGrid
+        anchors {
+            top: maximizeMasteryGrid.bottom
+            left: maximizeMasteryGrid.left
+            right: maximizeMasteryGrid.right
+        }
+
+        Repeater {
+            model: constraintSelectorModel.getOtherMasteryMaximizeModel()
+            delegate: MaximizeConstraintSelector {}
+        }
+    }
+
+    Rectangle {
+        id: seperatorMaximizeOther
+        width: parent.width
+        height: childrenRect.height
+        border.width: 1
+
+        anchors {
+            top:maximizeOtherMasteryGrid.bottom
+        }
+
+        Text {
+            text: qsTr("Maximize other section")
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+    }
+
+    Grid {
+        id: maximizeOtherRatioGrid
+        anchors {
+            top: seperatorMaximizeOther.bottom
+            left: seperatorMaximizeOther.left
+            right: seperatorMaximizeOther.right
+        }
+
+        Repeater {
+            model: constraintSelectorModel.getOtherMaximizeModel()
+            delegate: MaximizeRatioConstraintSelector {}
+        }
     }
 }
