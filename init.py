@@ -11,7 +11,7 @@ def	init():
 	setupJson()
 
 
-def install_requirements():
+def	install_requirements():
 	try:
 		file_path = "requirements.txt"
 		with open(file_path, 'r') as file:

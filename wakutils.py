@@ -107,7 +107,6 @@ def setupJson():
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as outfile:
         outfile.write(json_object)
-        # python trouve un chemin viable pour un fichier temporaire et écrit dedans
-        # outfile.name pour récupérer le chemin.
+        # find a place to put the tempory files | outfile.name to get path
 
 
