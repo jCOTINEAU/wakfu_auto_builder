@@ -1,19 +1,20 @@
 # This Python file uses the following encoding: utf-8
 import json
 import settings
+import tempfile
 
 def parse():
 
-    itemPropertiesFile = open("data/1.78.1.7/itemProperties.json")
+    itemPropertiesFile = open("data/1.78.1.7/itemProperties.json", encoding="utf-8")
     itemPropertiesData = json.load(itemPropertiesFile)
 
-    itemsFile = open("data/1.78.1.7/items.json")
+    itemsFile = open("data/1.78.1.7/items.json", encoding="utf-8")
     itemsData = json.load(itemsFile)
 
-    equipmentItemTypesFile = open("data/1.78.1.7/equipmentItemTypes.json")
+    equipmentItemTypesFile = open("data/1.78.1.7/equipmentItemTypes.json", encoding="utf-8")
     equipmentItemTypesData = json.load(equipmentItemTypesFile)
 
-    actionFile = open("data/1.78.1.7/actions.json")
+    actionFile = open("data/1.78.1.7/actions.json", encoding="utf-8")
     actionData = json.load(actionFile)
 
     settings.ITEMS_DATA=itemsData
@@ -104,7 +105,9 @@ def setupJson():
 
     json_object= json.dumps(settings.ACTION_DATA,indent=4)
 
-    with open("/tmp/actionData","w") as outfile:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as outfile:
         outfile.write(json_object)
+        # python trouve un chemin viable pour un fichier temporaire et écrit dedans
+        # outfile.name pour récupérer le chemin.
 
 
