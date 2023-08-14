@@ -103,10 +103,11 @@ def setupJson():
     restruct_item_into_id_map()
     add_direct_weapon_type()
 
-    json_object= json.dumps(settings.ACTION_DATA,indent=4)
+    json_object= json.dumps(settings.ITEMS_DATA,indent=4)
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as outfile:
         outfile.write(json_object)
+        print(outfile.name)
         # find a place to put the tempory files | outfile.name to get path
 
 

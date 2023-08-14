@@ -15,6 +15,7 @@ class Constraint:
         self.setDefault(default)
         self.setText(text)
         self.setParams(params)
+        self.setRatio(ratio)
 
     def setName(self,name: str):
         self.name=name
@@ -92,22 +93,22 @@ class ResConstraint(Constraint):
         return[
             createSimpleAddSubstractConstraint(simpleActionEnum.FIRE_RES_ADD,simpleActionEnum.FIRE_RES_MINUS)+
             createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_RES_ADD,simpleActionEnum.ELEM_RES_MINUS_UNCAPED)+
-            150+
+            170+
             createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_RES_ADD,paramsActionEnum.RANDOM_NUMBER_RES_MINUS,4)/4 >= resNumber,
 
             createSimpleAddSubstractConstraint(simpleActionEnum.AIR_RES_ADD,simpleActionEnum.AIR_RES_MINUS)+
             createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_RES_ADD,simpleActionEnum.ELEM_RES_MINUS_UNCAPED)+
-            150+
+            170+
             createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_RES_ADD,paramsActionEnum.RANDOM_NUMBER_RES_MINUS,4)/4 >= resNumber,
 
             createSimpleAddSubstractConstraint(simpleActionEnum.WATER_RES_ADD,simpleActionEnum.WATER_RES_MINUS)+
             createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_RES_ADD,simpleActionEnum.ELEM_RES_MINUS_UNCAPED)+
-            150+
+            170+
             createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_RES_ADD,paramsActionEnum.RANDOM_NUMBER_RES_MINUS,4)/4 >= resNumber,
 
             createSimpleAddSubstractConstraint(simpleActionEnum.EARTH_RES_ADD,simpleActionEnum.EARTH_RES_MINUS)+
             createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_RES_ADD,simpleActionEnum.ELEM_RES_MINUS_UNCAPED)+
-            150+
+            170+
             createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_RES_ADD,paramsActionEnum.RANDOM_NUMBER_RES_MINUS,4)/4 >= resNumber]
 class MasteryConstraint(Constraint):
     def createSolverConstraints(self,ratio=None):

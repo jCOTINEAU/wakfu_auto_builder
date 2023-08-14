@@ -71,7 +71,8 @@ class WakfuConstraintSelector(QObject):
             ])
 
         self.maximizeOtherModel = WakfuConstraintSelectorTemplate([
-            RatioConstraint('lockMaximizeSelector','parade',default=0,min=0,max=1,ratio=10,params=[simpleActionEnum.BLOCK_ADD,simpleActionEnum.BLOCK_MINUS])
+            RatioConstraint('blockMaximizeSelector','parade',default=0,min=0,max=1,ratio=10,params=[simpleActionEnum.BLOCK_ADD,simpleActionEnum.BLOCK_MINUS]),
+            RatioConstraint('blockMaximizeSelector','tacle',default=0,min=0,max=1,ratio=1,params=[simpleActionEnum.LOCK_ADD,simpleActionEnum.LOCK_MINUS])
         ])
 
     def setStuffConstraints(self):
@@ -138,7 +139,7 @@ class WakfuConstraintSelector(QObject):
            # remove shards from item list so far
            if item['definition']['item'].get('shardsParameters',0) != 0:
                continue
-           if item['definition']['item']['level'] >= constraints[0].getValue() :
+           if item['definition']['item']['level'] > constraints[0].getValue() :
                continue
 
            if item['definition']['item']['baseParameters']['rarity'] not in rarity:
@@ -155,9 +156,10 @@ class WakfuConstraintSelector(QObject):
             for i in constraint.createSolverConstraints():
                 self.solver.Add(i)
 
-
+        #Maximize section
         maximizeElemMasteryConstraint=self.maximizeElemMasteryModel.getConstraints()
         maximizeOtherMasteryConstraint=self.maximizeOtherMasteryModel.getConstraints()
+        maximzieOtherConstraint=self.maximizeOtherModel.getConstraints()
 
         nbElem = sum(var.getValue() for var in maximizeElemMasteryConstraint )
         maximize =SumArray([])
@@ -172,8 +174,11 @@ class WakfuConstraintSelector(QObject):
                 for i in constraint.createSolverConstraints():
                     maximize+=i*nbElem
         else:
-            pass
+            for constraint in maximzieOtherConstraint:
+                for i in constraint.createSolverConstraints():
+                    maximize+=i
         self.solver.Maximize(maximize)
+        # end of Maximize section
 
     @Slot(result=QAbstractItemModel)
     def getConstraintModel(self):
