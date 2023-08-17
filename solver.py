@@ -53,8 +53,8 @@ def getLevel(dct):
         return var
     return 0
 
-def createSimpleAddSubstractConstraint(actionAdd,actionMinus):
-    return (createConstraintWithFunc(getEquipEffectValue,actionAdd) - createConstraintWithFunc(getEquipEffectValue,actionMinus))
+def createSimpleAddSubstractConstraint(actionAdd,actionMinus,ratio=1):
+    return (createConstraintWithFunc(getEquipEffectValue,actionAdd,ratio) - createConstraintWithFunc(getEquipEffectValue,actionMinus,ratio))
 
 def createParamsConstraint(actionAdd,actionMinus,ratio=1):
     return (createConstraintWithFunc(getEquipEffectValueWithParams,actionAdd,ratio) - createConstraintWithFunc(getEquipEffectValueWithParams,actionMinus,ratio))

@@ -169,7 +169,7 @@ class WakfuConstraintSelector(QObject):
                 for i in constraint.createSolverConstraints():
                         maximize+=i
             maximize+=createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS,nbElem)
-
+            maximize+=createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS,nbElem)
             for constraint in maximizeOtherMasteryConstraint:
                 for i in constraint.createSolverConstraints():
                     maximize+=i*nbElem
