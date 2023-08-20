@@ -1,20 +1,23 @@
 # This Python file uses the following encoding: utf-8
+import os
 import json
 import settings
 import tempfile
 
 def parse():
 
-    itemPropertiesFile = open("data/1.78.1.7/itemProperties.json", encoding="utf-8")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    itemPropertiesFile = open(os.path.join(current_dir,"data/1.78.1.7/itemProperties.json"), encoding="utf-8")
     itemPropertiesData = json.load(itemPropertiesFile)
 
-    itemsFile = open("data/1.78.1.7/items.json", encoding="utf-8")
+    itemsFile = open(os.path.join(current_dir,"data/1.78.1.7/items.json"), encoding="utf-8")
     itemsData = json.load(itemsFile)
 
-    equipmentItemTypesFile = open("data/1.78.1.7/equipmentItemTypes.json", encoding="utf-8")
+    equipmentItemTypesFile = open(os.path.join(current_dir,"data/1.78.1.7/equipmentItemTypes.json"), encoding="utf-8")
     equipmentItemTypesData = json.load(equipmentItemTypesFile)
 
-    actionFile = open("data/1.78.1.7/actions.json", encoding="utf-8")
+    actionFile = open(os.path.join(current_dir,"data/1.78.1.7/actions.json"), encoding="utf-8")
     actionData = json.load(actionFile)
 
     settings.ITEMS_DATA=itemsData
