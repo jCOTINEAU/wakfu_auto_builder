@@ -1,0 +1,89 @@
+---
+description: Overview of the Wakfu Auto-Builder project — objective, architecture, data flow, and conventions.
+alwaysApply: true
+---
+
+# Wakfu Auto-Builder
+
+## Objective
+
+This is a **prototype equipment optimizer for the MMORPG Wakfu**. Given user-defined constraints (minimum stats, level cap, rarity filters) and an optimization target (maximize mastery), it uses **mixed-integer linear programming** (OR-Tools CBC solver) to find the optimal set of 14 equipment pieces.
+
+The project originated from this Wakfu [forum post](https://www.wakfu.com/fr/forum/8-discussions-generales/429089-prototype-builder-presentation-concept).
+
+## Tech Stack
+
+- **Python 3.12+**
+- **PySide6 / Qt QML** — GUI framework. Python models are exposed to QML via `@QmlElement`.
+- **Google OR-Tools** (`ortools.linear_solver.pywraplp`) — MIP solver for equipment optimization.
+- Game data is stored as **static JSON files** in `data/1.78.1.7/`.
+
+## Architecture
+
+```
+main.py                         # Entry point: QGuiApplication + QML engine
+├── settings.py                 # Global state (enums, data dicts, solver variables)
+├── wakutils.py                 # JSON parsing, item restructuring, weapon type tagging
+├── solver.py                   # Constraint builder functions (LP helpers)
+├── constraint.py               # Constraint class hierarchy (Constraint, ResConstraint, etc.)
+│
+├── wakfuConstraintSelector.py  # Core logic: builds solver model, runs optimization
+├── wakfuConstraintSelectorTemplate.py  # QAbstractListModel for constraint UI
+├── wakfuitemlist.py            # QAbstractListModel for result item list
+├── wakfuItemDetail.py          # QAbstractListModel for single item stats
+├── wakfuItemStatSum.py         # QAbstractListModel for aggregated stats
+│
+├── views/
+│   ├── mainPage.qml            # Root window (switches between ConstraintGrid and Resultitem)
+│   ├── ConstraintGrid.qml      # Main constraint editing page + Solve button
+│   ├── ConstraintSelector.qml  # Single constraint input (text + number field)
+│   ├── MaximizeConstraintSelector.qml   # Toggle for mastery maximize targets
+│   ├── MaximizeRatioConstraintSelector.qml  # (extends MaximizeConstraintSelector)
+│   └── Resultitem.qml          # Result page: item list, item detail popup, stat summary
+│
+└── data/1.78.1.7/
+    ├── items.json               # All equipment items
+    ├── itemProperties.json      # Item property definitions
+    ├── equipmentItemTypes.json  # Equipment slot/type definitions
+    └── actions.json             # Stat action definitions (mastery, res, etc.)
+```
+
+## Data Flow
+
+1. **Startup** (`main.py`): `settings.initGlobal()` initializes global dicts, then `wakutils.setupJson()` parses JSON files, restructures items into ID-keyed maps, and tags weapon types.
+2. **Constraint editing** (QML `ConstraintGrid`): User sets level, rarity, stat constraints and mastery maximize targets. Values are stored in `WakfuConstraintSelectorTemplate` models and bound two-way via QML.
+3. **Solve** (`WakfuConstraintSelector.solve()`): Filters items by level/rarity, creates boolean variables in OR-Tools, adds slot/rarity/weapon constraints, adds user stat constraints, sets mastery maximization objective, then calls `solver.Solve()`.
+4. **Results** (QML `Resultitem`): Displays optimal item list (left pane), item detail on hover, and aggregated stats (right pane).
+
+## Key Global State (`settings.py`)
+
+All shared data lives in `settings` module globals:
+- `ITEMS_DATA` — dict of items keyed by item ID (after restructuring)
+- `EQUIPMENT_ITEM_TYPES_DATA` — equipment type definitions keyed by ID
+- `ACTION_DATA` — action definitions keyed by ID
+- `VARIABLES` — dict of OR-Tools `BoolVar` keyed by item ID (rebuilt each solve)
+- `OPTIMIZED_ITEM_LIST` — result list of `{id, name}` dicts
+
+## Constraint Hierarchy (`constraint.py`)
+
+- `Constraint` — base class, creates `>=` constraint from simple add/subtract action pairs
+- `LevelConstraint` / `RarityConstraint` — filtering only (no solver constraints, handled in `initSolver`)
+- `ResConstraint` — resistance target: converts % reduction to raw res via log formula, constrains all 4 elements
+- `MasteryConstraint` — included in maximize objective, not as a minimum bound
+- `RatioConstraint` — weighted contribution to maximize objective
+
+## Conventions
+
+- All solver helper functions are in `solver.py` and operate on `settings.VARIABLES` / `settings.ITEMS_DATA`.
+- QML models inherit `QAbstractListModel` and are registered with `@QmlElement`.
+- Stat IDs match Wakfu's internal `actionId` system (see `simpleActionEnum`, `paramsActionEnum`).
+- The project uses **flat file structure** (no packages/submodules).
+
+## Running
+
+```bash
+source .venv/bin/activate
+python main.py
+```
+
+Dependencies: `pip install -r requirements.txt` (PySide6, ortools).

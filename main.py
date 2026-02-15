@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     settings.initGlobal()
     setupJson()
-    #    solve()
 
+    engine.rootContext().setContextProperty("dataVersion", settings.DATA_VERSION)
     engine.load("views/mainPage.qml")
     sys.exit(app.exec())
 

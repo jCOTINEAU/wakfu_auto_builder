@@ -10,7 +10,7 @@ from settings import simpleActionEnum
 from settings import paramsActionEnum
 from solver import createConstraintWithFunc,getEquipmentType,getRarity,getWaeponType,createSimpleAddSubstractConstraint,createParamsConstraint,createLevelConstraint
 from ortools.linear_solver import pywraplp
-from ortools.linear_solver.linear_solver_natural_api import SumArray
+from ortools.linear_solver.pywraplp import SumArray
 from wakfuConstraintSelectorTemplate import WakfuConstraintSelectorTemplate
 from constraint import Constraint,ResConstraint,LevelConstraint,RarityConstraint,MasteryConstraint,RatioConstraint
 import math
@@ -63,10 +63,8 @@ class WakfuConstraintSelector(QObject):
             MasteryConstraint('critMasterySelector','maitrise critique',default=0,min=0,max=1,params=[simpleActionEnum.CRIT_MASTERY_ADD,simpleActionEnum.CRIT_MASTERY_MINUS]),
             MasteryConstraint('backMasterySelector','maitrise dos',default=0,min=0,max=1,params=[simpleActionEnum.BACK_MASTERY_ADD,simpleActionEnum.BACK_MASTERY_MINUS]),
             MasteryConstraint('meleeMasterySelector','maitrise melee',default=0,min=0,max=1,params=[simpleActionEnum.MELEE_MASTERY_ADD,simpleActionEnum.MELEE_MASTERY_MINUS]),
-            MasteryConstraint('monoMasterySelector','maitrise mono',default=0,min=0,max=1,params=[simpleActionEnum.MONO_MASTERY_ADD,simpleActionEnum.MONO_MASTERY_MINUS]),
             MasteryConstraint('healMasterySelector','maitrise soin',default=0,min=0,max=1,params=[simpleActionEnum.HEAL_MASTERY_ADD,simpleActionEnum.HEAL_MASTERY_MINUS]),
             MasteryConstraint('distanceMasterySelector','maitrise distance',default=0,min=0,max=1,params=[simpleActionEnum.DISTANCE_MASTERY_ADD,simpleActionEnum.DISTANCE_MASTERY_MINUS]),
-            MasteryConstraint('zoneMasterySelector','maitrise zone',default=0,min=0,max=1,params=[simpleActionEnum.ZONE_MASTERY_ADD,simpleActionEnum.ZONE_MASTERY_MINUS]),
             MasteryConstraint('berzerkMasterySelector','maitrise berzerk',default=0,min=0,max=1,params=[simpleActionEnum.BERSERK_MASTERY_ADD,simpleActionEnum.BERSERK_MASTERY_MINUS]),
             ])
 

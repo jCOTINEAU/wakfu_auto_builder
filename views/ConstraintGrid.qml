@@ -1,120 +1,204 @@
-import QtQuick 2.12
-import QtQuick.Controls
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import wakfuConstraintSelector
 import WakfuConstraintSelectorTemplate
 
-
 Item {
     anchors.fill: parent
-
-    Button {
-        anchors {
-            bottom: parent.bottom
-            horizontalCenter: parent.horizontalCenter
-        }
-
-        id: solveButton
-        text: 'Solve'
-        font.pointSize: 25
-        onClicked: {
-            constraintSelectorModel.solve()
-            resultPage.visible= true
-            constraintPage.visible= false
-        }
-    }
 
     WakfuConstraintSelector {
         id: constraintSelectorModel
     }
 
-    Grid {
-        id: constraintGrid
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
+    Flickable {
+        id: scrollArea
+        anchors.fill: parent
+        anchors.margins: 16
+        anchors.bottomMargin: solveButton.height + 32
+        contentHeight: mainColumn.height
+        clip: true
+        flickableDirection: Flickable.VerticalFlick
+        boundsBehavior: Flickable.StopAtBounds
 
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
         }
-        columns: (parent.width/250).toFixed(1)
 
-        Repeater {
-            model: constraintSelectorModel.getConstraintModel()
-            delegate: ConstraintSelector {}
+        ColumnLayout {
+            id: mainColumn
+            width: scrollArea.width - 12
+            spacing: 20
+
+            // ── Section: Stat Constraints ──
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: sectionConstraints.implicitHeight + 32
+                color: mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.border
+                border.width: 1
+
+                ColumnLayout {
+                    id: sectionConstraints
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Text {
+                        text: "Contraintes"
+                        color: mainPage.accent
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: constraintSelectorModel ? constraintSelectorModel.getConstraintModel() : null
+                            delegate: ConstraintSelector {}
+                        }
+                    }
+                }
+            }
+
+            // ── Section: Elemental Mastery Maximize ──
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: sectionElemMastery.implicitHeight + 32
+                color: mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.border
+                border.width: 1
+
+                ColumnLayout {
+                    id: sectionElemMastery
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Text {
+                        text: "Maximiser — Maîtrises élémentaires"
+                        color: mainPage.accent
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: constraintSelectorModel ? constraintSelectorModel.getElemMasteryMaximizeModel() : null
+                            delegate: MaximizeConstraintSelector {}
+                        }
+                    }
+                }
+            }
+
+            // ── Section: Other Mastery Maximize ──
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: sectionOtherMastery.implicitHeight + 32
+                color: mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.border
+                border.width: 1
+
+                ColumnLayout {
+                    id: sectionOtherMastery
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Text {
+                        text: "Maximiser — Autres maîtrises"
+                        color: mainPage.accent
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: constraintSelectorModel ? constraintSelectorModel.getOtherMasteryMaximizeModel() : null
+                            delegate: MaximizeConstraintSelector {}
+                        }
+                    }
+                }
+            }
+
+            // ── Section: Other Maximize ──
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: sectionOther.implicitHeight + 32
+                color: mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.border
+                border.width: 1
+
+                ColumnLayout {
+                    id: sectionOther
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Text {
+                        text: "Maximiser — Divers"
+                        color: mainPage.accent
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: constraintSelectorModel ? constraintSelectorModel.getOtherMaximizeModel() : null
+                            delegate: MaximizeRatioConstraintSelector {}
+                        }
+                    }
+                }
+            }
         }
-
     }
 
+    // ── Solve Button ──
     Rectangle {
-        id: seperatorMaximize
-        width: parent.width
-        height: childrenRect.height
-        border.width: 1
+        id: solveButton
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottomMargin: 16
+        width: 220
+        height: 50
+        radius: mainPage.radius
+        color: solveMouseArea.containsMouse ? mainPage.accentDim : mainPage.accent
 
-        anchors {
-            top:constraintGrid.bottom
-        }
+        Behavior on color { ColorAnimation { duration: 150 } }
 
         Text {
-            text: qsTr("Maximize mastery section")
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-    }
-
-    Grid {
-        id: maximizeMasteryGrid
-        anchors {
-            top: seperatorMaximize.bottom
-            left: seperatorMaximize.left
-            right: seperatorMaximize.right
+            anchors.centerIn: parent
+            text: "Optimiser"
+            color: "#0f0f1a"
+            font.pixelSize: 18
+            font.bold: true
         }
 
-        Repeater {
-            model: constraintSelectorModel.getElemMasteryMaximizeModel()
-            delegate: MaximizeConstraintSelector {}
-        }
-    }
-
-    Grid {
-        id: maximizeOtherMasteryGrid
-        anchors {
-            top: maximizeMasteryGrid.bottom
-            left: maximizeMasteryGrid.left
-            right: maximizeMasteryGrid.right
-        }
-
-        Repeater {
-            model: constraintSelectorModel.getOtherMasteryMaximizeModel()
-            delegate: MaximizeConstraintSelector {}
-        }
-    }
-
-    Rectangle {
-        id: seperatorMaximizeOther
-        width: parent.width
-        height: childrenRect.height
-        border.width: 1
-
-        anchors {
-            top:maximizeOtherMasteryGrid.bottom
-        }
-
-        Text {
-            text: qsTr("Maximize other section")
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-    }
-
-    Grid {
-        id: maximizeOtherRatioGrid
-        anchors {
-            top: seperatorMaximizeOther.bottom
-            left: seperatorMaximizeOther.left
-            right: seperatorMaximizeOther.right
-        }
-
-        Repeater {
-            model: constraintSelectorModel.getOtherMaximizeModel()
-            delegate: MaximizeRatioConstraintSelector {}
+        MouseArea {
+            id: solveMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                constraintSelectorModel.solve()
+                resultPage.visible = true
+                constraintPage.visible = false
+            }
         }
     }
 }
