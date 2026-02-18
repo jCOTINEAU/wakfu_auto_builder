@@ -214,3 +214,160 @@ class TestConstraintBuilders:
         solver.Maximize(expr)
         solver.Solve()
         assert solver.Objective().Value() == 1  # only item_high selected
+
+
+# ---------------------------------------------------------------------------
+# Mastery scaling in objective function
+# Reproduces the ELEM_MASTERY_ADD bug: universal mastery must be scaled
+# by nbElem (number of selected elements) in the objective.
+# ---------------------------------------------------------------------------
+
+class TestMasteryScaling:
+    """Test that ELEM_MASTERY_ADD is properly weighted vs single-element mastery."""
+
+    def _setup_solver_with_items(self, items_dict):
+        solver = pywraplp.Solver("test", pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+        settings.ITEMS_DATA = items_dict
+        settings.VARIABLES = {}
+        for key, item in items_dict.items():
+            settings.VARIABLES[key] = solver.BoolVar(f"item_{key}")
+        return solver
+
+    def test_elem_mastery_objective_coefficient_scales_with_nbelem(self):
+        """ELEM_MASTERY_ADD +100 with nbElem=2 should contribute 200 to the objective."""
+        item = make_item(1, 100, 134, 4, effects={
+            int(simpleActionEnum.ELEM_MASTERY_ADD): [100, 0],
+        })
+        items = {1: item}
+        solver = self._setup_solver_with_items(items)
+
+        nbElem = 2
+        expr = createSimpleAddSubstractConstraint(
+            simpleActionEnum.ELEM_MASTERY_ADD,
+            simpleActionEnum.ELEM_MASTERY_MINUS,
+        ) * nbElem
+
+        solver.Maximize(expr)
+        solver.Add(settings.VARIABLES[1] == 1)
+        solver.Solve()
+        assert solver.Objective().Value() == 200  # 100 * 2 elements
+
+    def test_elem_mastery_beats_single_element_for_two_elements(self):
+        """When optimizing for 2 elements, +100 ELEM_MASTERY (worth 200)
+        should beat +100 single-element FIRE_MASTERY (worth 100).
+
+        Two daggers in the same slot — solver must pick the elemental one.
+        """
+        # Dagger A: +100 fire mastery only
+        dagger_fire = make_item(1, 100, 518, 4, effects={
+            int(simpleActionEnum.FIRE_MASTERY_ADD): [100, 0],
+        }, title="Dague Piou", weapon_flags={"isPrimary": 1})
+
+        # Dagger B: +100 elemental mastery (all 4 elements)
+        dagger_elem = make_item(2, 100, 518, 4, effects={
+            int(simpleActionEnum.ELEM_MASTERY_ADD): [100, 0],
+        }, title="Dague Elementaire", weapon_flags={"isPrimary": 1})
+
+        items = {1: dagger_fire, 2: dagger_elem}
+        solver = self._setup_solver_with_items(items)
+
+        # Only one primary weapon allowed
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] <= 1)
+        # Must pick one
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] >= 1)
+
+        nbElem = 2  # optimizing fire + water
+
+        # Build the objective like wakfuConstraintSelector does:
+        # fire mastery (selected)
+        maximize = createSimpleAddSubstractConstraint(
+            simpleActionEnum.FIRE_MASTERY_ADD, simpleActionEnum.FIRE_MASTERY_MINUS)
+        # water mastery (selected) — neither dagger has it, but included for completeness
+        maximize += createSimpleAddSubstractConstraint(
+            simpleActionEnum.WATER_MASTERY_ADD, simpleActionEnum.WATER_MASTERY_MINUS)
+        # elem mastery — THIS is the line under test: must be * nbElem
+        maximize += createSimpleAddSubstractConstraint(
+            simpleActionEnum.ELEM_MASTERY_ADD, simpleActionEnum.ELEM_MASTERY_MINUS) * nbElem
+
+        solver.Maximize(maximize)
+        solver.Solve()
+
+        # Dagger elem should win: 100*2=200 vs fire dagger: 100
+        assert settings.VARIABLES[2].solution_value() == 1, \
+            "Solver should pick the elemental mastery dagger"
+        assert settings.VARIABLES[1].solution_value() == 0
+
+    def test_elem_mastery_equal_to_single_for_one_element(self):
+        """When optimizing for 1 element only, +100 ELEM_MASTERY and
+        +100 single-element FIRE_MASTERY are equivalent (both worth 100).
+        """
+        dagger_fire = make_item(1, 100, 518, 4, effects={
+            int(simpleActionEnum.FIRE_MASTERY_ADD): [100, 0],
+        }, title="Dague Piou", weapon_flags={"isPrimary": 1})
+
+        dagger_elem = make_item(2, 100, 518, 4, effects={
+            int(simpleActionEnum.ELEM_MASTERY_ADD): [100, 0],
+        }, title="Dague Elementaire", weapon_flags={"isPrimary": 1})
+
+        items = {1: dagger_fire, 2: dagger_elem}
+        solver = self._setup_solver_with_items(items)
+
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] <= 1)
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] >= 1)
+
+        nbElem = 1  # fire only
+
+        maximize = createSimpleAddSubstractConstraint(
+            simpleActionEnum.FIRE_MASTERY_ADD, simpleActionEnum.FIRE_MASTERY_MINUS)
+        maximize += createSimpleAddSubstractConstraint(
+            simpleActionEnum.ELEM_MASTERY_ADD, simpleActionEnum.ELEM_MASTERY_MINUS) * nbElem
+
+        solver.Maximize(maximize)
+        solver.Solve()
+
+        # Both are worth 100 — solver picks either, just check objective = 100
+        assert solver.Objective().Value() == 100
+
+    def test_tri_element_vs_elem_mastery_for_two_elements(self):
+        """Reproduces the actual user bug: tri-element mastery (RANDOM_NUMBER,
+        params[2]=3) with +50/element vs elemental mastery +100 all 4 elements.
+
+        Optimizing for 2 elements:
+        - Tri-element: min(2, 3) * 50 = 100
+        - Elemental:   100 * 2 = 200
+
+        The elemental dagger should win.
+        """
+        # Dague piou: mastery in 3 elements, +50 per element
+        dague_piou = make_item(1, 100, 518, 4, effects={
+            int(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD): [50, 0, 3],
+        }, title="Dague Piou", weapon_flags={"isPrimary": 1})
+
+        # Better dagger: +100 elemental mastery (all 4)
+        dague_elem = make_item(2, 100, 518, 4, effects={
+            int(simpleActionEnum.ELEM_MASTERY_ADD): [100, 0],
+        }, title="Dague Elementaire", weapon_flags={"isPrimary": 1})
+
+        items = {1: dague_piou, 2: dague_elem}
+        solver = self._setup_solver_with_items(items)
+
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] <= 1)
+        solver.Add(settings.VARIABLES[1] + settings.VARIABLES[2] >= 1)
+
+        nbElem = 2
+
+        # Build objective as wakfuConstraintSelector should:
+        maximize = createParamsConstraint(
+            paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,
+            paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS,
+            nbElem)
+        maximize += createSimpleAddSubstractConstraint(
+            simpleActionEnum.ELEM_MASTERY_ADD,
+            simpleActionEnum.ELEM_MASTERY_MINUS) * nbElem
+
+        solver.Maximize(maximize)
+        solver.Solve()
+
+        # Elem dagger (200) should beat tri-element piou (100)
+        assert settings.VARIABLES[2].solution_value() == 1, \
+            "Solver should pick elemental mastery dagger over tri-element"

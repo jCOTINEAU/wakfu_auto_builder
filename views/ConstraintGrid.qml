@@ -1,15 +1,10 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import wakfuConstraintSelector
 import WakfuConstraintSelectorTemplate
 
 Item {
     anchors.fill: parent
-
-    WakfuConstraintSelector {
-        id: constraintSelectorModel
-    }
 
     Flickable {
         id: scrollArea
@@ -168,36 +163,72 @@ Item {
         }
     }
 
-    // ── Solve Button ──
-    Rectangle {
-        id: solveButton
+    // ── Bottom Button Bar ──
+    Row {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        width: 220
-        height: 50
-        radius: mainPage.radius
-        color: solveMouseArea.containsMouse ? mainPage.accentDim : mainPage.accent
+        spacing: 16
 
-        Behavior on color { ColorAnimation { duration: 150 } }
+        // Saved Builds button
+        Rectangle {
+            width: 200
+            height: 50
+            radius: mainPage.radius
+            color: buildsMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.3) : mainPage.bgInput
+            border.color: mainPage.accent
+            border.width: 1
 
-        Text {
-            anchors.centerIn: parent
-            text: "Optimiser"
-            color: "#0f0f1a"
-            font.pixelSize: 18
-            font.bold: true
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            Text {
+                anchors.centerIn: parent
+                text: "📂  Mes builds"
+                color: mainPage.accent
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+            MouseArea {
+                id: buildsMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    constraintPage.visible = false
+                    savedBuildsPage.visible = true
+                }
+            }
         }
 
-        MouseArea {
-            id: solveMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                constraintSelectorModel.solve()
-                resultPage.visible = true
-                constraintPage.visible = false
+        // Solve button
+        Rectangle {
+            id: solveButton
+            width: 220
+            height: 50
+            radius: mainPage.radius
+            color: solveMouseArea.containsMouse ? mainPage.accentDim : mainPage.accent
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            Text {
+                anchors.centerIn: parent
+                text: "Optimiser"
+                color: "#0f0f1a"
+                font.pixelSize: 18
+                font.bold: true
+            }
+
+            MouseArea {
+                id: solveMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    constraintSelectorModel.solve()
+                    resultPage.visible = true
+                    constraintPage.visible = false
+                }
             }
         }
     }

@@ -128,7 +128,7 @@ Rectangle {
 
                 validator: IntValidator { bottom: customMin; top: customMax }
 
-                Component.onCompleted: text = defaultValue !== 0 ? defaultValue : ''
+                Component.onCompleted: text = value !== 0 ? value : ''
 
                 onTextChanged: {
                     value = text === '' ? 0 : text

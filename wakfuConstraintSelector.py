@@ -3,6 +3,7 @@
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject,Signal,QAbstractItemModel
 
+import json
 import settings
 from settings import eqTypeEnum
 from settings import rarityEnum
@@ -167,7 +168,7 @@ class WakfuConstraintSelector(QObject):
                 for i in constraint.createSolverConstraints():
                         maximize+=i
             maximize+=createParamsConstraint(paramsActionEnum.RANDOM_NUMBER_MASTERY_ADD,paramsActionEnum.RANDOM_NUMBER_MASTERY_MINUS,nbElem)
-            maximize+=createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS,nbElem)
+            maximize+=createSimpleAddSubstractConstraint(simpleActionEnum.ELEM_MASTERY_ADD,simpleActionEnum.ELEM_MASTERY_MINUS)*nbElem
             for constraint in maximizeOtherMasteryConstraint:
                 for i in constraint.createSolverConstraints():
                     maximize+=i*nbElem
@@ -193,6 +194,32 @@ class WakfuConstraintSelector(QObject):
     @Slot(result=QAbstractItemModel)
     def getOtherMaximizeModel(self):
         return self.maximizeOtherModel
+
+    @Slot(result=str)
+    def exportConstraints(self):
+        """Export all constraint values as a JSON string (name -> value)."""
+        data = {}
+        for model in [self.simpleConstraintModel, self.maximizeElemMasteryModel,
+                       self.maximizeOtherMasteryModel, self.maximizeOtherModel]:
+            for constraint in model.getConstraints():
+                data[constraint.getName()] = constraint.getValue()
+        return json.dumps(data)
+
+    @Slot(str)
+    def importConstraints(self, json_str):
+        """Restore constraint values from a JSON string and refresh the UI."""
+        try:
+            data = json.loads(json_str)
+        except (json.JSONDecodeError, ValueError):
+            return
+
+        for model in [self.simpleConstraintModel, self.maximizeElemMasteryModel,
+                       self.maximizeOtherMasteryModel, self.maximizeOtherModel]:
+            for i, constraint in enumerate(model.getConstraints()):
+                if constraint.getName() in data:
+                    constraint.setValue(data[constraint.getName()])
+            model.beginResetModel()
+            model.endResetModel()
 
     @Slot()
     def solve(self):
