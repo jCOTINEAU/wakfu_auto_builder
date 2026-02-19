@@ -14,6 +14,8 @@ from ortools.linear_solver import pywraplp
 from ortools.linear_solver.pywraplp import SumArray
 from wakfuConstraintSelectorTemplate import WakfuConstraintSelectorTemplate
 from constraint import Constraint,ResConstraint,LevelConstraint,RarityConstraint,MasteryConstraint,RatioConstraint
+from stat_profile_manager import CONSTRAINT_STAT_MAP, resistance_percent_to_raw
+import stat_profile_manager
 import math
 
 
@@ -26,6 +28,7 @@ class WakfuConstraintSelector(QObject):
     def __init__(self,parent=None):
         super().__init__(parent=parent)
         self.constraintValueFromUi = {}
+        self._active_profile_id = ""
 
         self.simpleConstraintModel = WakfuConstraintSelectorTemplate([
             LevelConstraint('levelSelector','Level <=',params=[],default=230,min=1,max=999),
@@ -221,9 +224,40 @@ class WakfuConstraintSelector(QObject):
             model.beginResetModel()
             model.endResetModel()
 
+    @Slot(str)
+    def setActiveProfile(self, profile_id):
+        self._active_profile_id = profile_id
+
+    @Slot()
+    def clearActiveProfile(self):
+        self._active_profile_id = ""
+
+    @Slot(result=str)
+    def getActiveProfileId(self):
+        return self._active_profile_id
+
+    def _applyStatProfile(self):
+        """Apply base stats from the active profile to all constraints."""
+        stats = {}
+        if self._active_profile_id:
+            profile = stat_profile_manager.get_profile(self._active_profile_id)
+            if profile:
+                stats = profile.get("stats", {})
+
+        for constraint in self.simpleConstraintModel.getConstraints():
+            stat_key = CONSTRAINT_STAT_MAP.get(constraint.getName())
+            if stat_key and stat_key in stats:
+                value = stats[stat_key]
+                if constraint.getName() == "resConstraint":
+                    value = resistance_percent_to_raw(value)
+                constraint.setBaseValue(value)
+            else:
+                constraint.setBaseValue(0)
+
     @Slot()
     def solve(self):
 
+        self._applyStatProfile()
         self.initSolver()
 
         status = self.solver.Solve()

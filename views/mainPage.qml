@@ -55,6 +55,11 @@ ApplicationWindow {
         visible: false
     }
 
+    StatProfiles {
+        id: statProfilesPage
+        visible: false
+    }
+
     // ── Version badge ──
     Text {
         anchors.left: parent.left

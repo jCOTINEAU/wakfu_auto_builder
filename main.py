@@ -11,6 +11,7 @@ from wakfuItemStatSum import WakfuItemStatSum
 from wakfuConstraintSelectorTemplate import WakfuConstraintSelectorTemplate
 from wakfuBuildManager import WakfuBuildManager
 from wakfuBuildComparison import WakfuBuildComparison
+from wakfuStatProfileManager import WakfuStatProfileManager
 from constraint import Constraint
 
 from PySide6.QtQml import QmlElement

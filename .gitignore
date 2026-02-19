@@ -129,8 +129,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Saved builds (user data)
+# Saved builds and profiles (user data)
 saved_builds.json
+saved_stat_profiles.json
 
 # Cursor IDE
 .cursor/
