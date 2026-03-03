@@ -2,11 +2,13 @@
 """QML-exposed model for managing character stat profiles."""
 
 import json
+import threading
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot, Signal, Qt, QAbstractListModel, QModelIndex, QByteArray
 
 import stat_profile_manager
 from stat_profile_manager import DEFAULT_STATS, STAT_LABELS
+import zenith_importer
 
 
 QML_IMPORT_NAME = "WakfuStatProfileManager"
@@ -23,12 +25,15 @@ class WakfuStatProfileManager(QAbstractListModel):
 
     saveSuccess = Signal()
     deleteSuccess = Signal()
+    editingStatsChanged = Signal()
+    zenithFetchComplete = Signal(str)   # emits result JSON when background fetch finishes
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._profiles = stat_profile_manager.list_profiles()
         self._editing_stats = dict(DEFAULT_STATS)
         self._editing_id = ""
+        self._zenith_url = ""
 
     # ── QAbstractListModel interface ──
 
@@ -82,7 +87,11 @@ class WakfuStatProfileManager(QAbstractListModel):
     @Slot(str)
     def saveProfile(self, name):
         """Save a new profile with the current editing stats."""
-        stat_profile_manager.save_profile(name=name, stats=dict(self._editing_stats))
+        stat_profile_manager.save_profile(
+            name=name,
+            stats=dict(self._editing_stats),
+            zenith_url=self._zenith_url,
+        )
         self.reload()
         self.saveSuccess.emit()
 
@@ -92,6 +101,7 @@ class WakfuStatProfileManager(QAbstractListModel):
         stat_profile_manager.overwrite_profile(
             profile_id=profile_id,
             stats=dict(self._editing_stats),
+            zenith_url=self._zenith_url,
         )
         self.reload()
         self.saveSuccess.emit()
@@ -109,6 +119,7 @@ class WakfuStatProfileManager(QAbstractListModel):
         """Reset editing stats to defaults (for new profile)."""
         self._editing_stats = dict(DEFAULT_STATS)
         self._editing_id = ""
+        self._zenith_url = ""
 
     @Slot(str)
     def loadForEditing(self, profile_id):
@@ -120,6 +131,7 @@ class WakfuStatProfileManager(QAbstractListModel):
                 if k in self._editing_stats:
                     self._editing_stats[k] = v
             self._editing_id = profile_id
+            self._zenith_url = profile.get("zenith_url", "")
 
     @Slot(str, result=int)
     def getEditingStat(self, key):
@@ -156,3 +168,42 @@ class WakfuStatProfileManager(QAbstractListModel):
         if profile:
             return json.dumps(profile.get("stats", {}))
         return "{}"
+
+    # ── Zenith import ──
+
+    @Slot(result=str)
+    def getZenithUrl(self):
+        return self._zenith_url
+
+    @Slot(str)
+    def setZenithUrl(self, url):
+        self._zenith_url = url.strip()
+
+    @Slot(str)
+    def fetchFromZenith(self, url):
+        """Start an async Zenith fetch in a background thread.
+
+        Emits zenithFetchComplete(result_json) when done.
+        result_json: { "stats": {...}, "has_equipment": bool, "equipment_count": int, "error": str }
+        """
+        self._zenith_url = url.strip()
+        _url = url  # capture for the closure
+
+        def _worker():
+            result = zenith_importer.import_zenith_build(_url)
+            self.zenithFetchComplete.emit(json.dumps(result))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    @Slot(str)
+    def applyZenithStats(self, result_json):
+        """Apply the stats dict from a fetchFromZenith result to the editing buffer."""
+        try:
+            data = json.loads(result_json)
+            stats = data.get("stats", {})
+            for k, v in stats.items():
+                if k in self._editing_stats:
+                    self._editing_stats[k] = v
+            self.editingStatsChanged.emit()
+        except (json.JSONDecodeError, ValueError):
+            pass

@@ -11,12 +11,75 @@ Item {
         id: profileModel
     }
 
+    function zenithDoFetch(url) {
+        if (!url || url.trim() === "") {
+            zenithStatus = "Entrez une URL Zenith."
+            zenithStatusColor = mainPage.textMuted
+            return
+        }
+        zenithStatus = "Chargement…"
+        zenithStatusColor = mainPage.textMuted
+        zenithFetching = true
+        profileModel.fetchFromZenith(url)
+        // result handled by onZenithFetchComplete below
+    }
+
     property bool editorOpen: false
     property string editorMode: "new" // "new" or "edit"
     property string editingProfileName: ""
 
+    // ── Zenith import state ──
+    property string zenithStatus: ""
+    property string zenithStatusColor: mainPage.textMuted
+    property string zenithPendingResult: ""   // JSON string awaiting confirmation
+    property int    statRefreshTrigger: 0      // incremented to force inputs to re-read model
+    property bool   zenithFetching: false      // true while background fetch is in progress
+
     // ── Delete confirmation ──
     property string pendingDeleteId: ""
+
+    // ── Zenith refresh confirmation ──
+    Rectangle {
+        id: zenithRefreshDialog
+        visible: false
+        anchors.centerIn: parent
+        width: 380; height: 160
+        color: mainPage.bgCard; radius: mainPage.radius
+        border.color: mainPage.accent; border.width: 2; z: 200
+
+        ColumnLayout {
+            anchors.fill: parent; anchors.margins: 24; spacing: 16
+            Text { text: "Rafraîchir depuis Zenith ?"; color: mainPage.textLight; font.pixelSize: 16; font.bold: true }
+            Text { text: "Les stats seront écrasées par le build Zenith."; color: mainPage.textMuted; font.pixelSize: 13 }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 12
+                Item { Layout.fillWidth: true }
+                Rectangle {
+                    width: 90; height: 36; radius: 6
+                    color: zRefCancelMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.3) : mainPage.bgInput
+                    border.color: mainPage.border; border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "Annuler"; color: mainPage.textMuted; font.pixelSize: 13 }
+                    MouseArea { id: zRefCancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: zenithRefreshDialog.visible = false }
+                }
+                Rectangle {
+                    width: 130; height: 36; radius: 6
+                    color: zRefConfirmMouse.containsMouse ? mainPage.accentDim : mainPage.accent
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "Rafraîchir"; color: "#0f0f1a"; font.pixelSize: 13; font.bold: true }
+                    MouseArea {
+                        id: zRefConfirmMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            zenithRefreshDialog.visible = false
+                            zenithDoFetch(profileModel.getZenithUrl())
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Rectangle { anchors.fill: parent; color: "#80000000"; visible: zenithRefreshDialog.visible; z: 150; MouseArea { anchors.fill: parent; onClicked: zenithRefreshDialog.visible = false } }
 
     Rectangle {
         id: profileDeleteDialog
@@ -74,6 +137,27 @@ Item {
     Connections {
         target: profileModel
         function onSaveSuccess() { profileSaveToast.visible = true; profileToastTimer.restart() }
+        function onZenithFetchComplete(resultStr) {
+            zenithFetching = false
+            var result = JSON.parse(resultStr)
+
+            if (result.error && result.error !== "") {
+                zenithStatus = "Erreur : " + result.error
+                zenithStatusColor = mainPage.negative
+                return
+            }
+
+            if (result.has_equipment) {
+                zenithStatus = "⚠ Ce build contient " + result.equipment_count + " équipement(s) — les stats reflètent les items, pas seulement le personnage. Import annulé."
+                zenithStatusColor = mainPage.accent
+                return
+            }
+
+            profileModel.applyZenithStats(resultStr)
+            statProfilesPage.statRefreshTrigger++
+            zenithStatus = "Stats importées depuis Zenith ✓"
+            zenithStatusColor = mainPage.positive
+        }
     }
 
     // ══════════════════════════════════════════
@@ -138,6 +222,8 @@ Item {
                                 profileModel.loadForEditing(profileId)
                                 editorMode = "edit"
                                 editingProfileName = profileName
+                                zenithUrlInput.text = profileModel.getZenithUrl()
+                                zenithStatus = ""
                                 editorOpen = true
                             }
                         }
@@ -197,6 +283,69 @@ Item {
 
         Rectangle { Layout.fillWidth: true; height: 1; color: mainPage.border }
 
+        // ── Zenith import row ──────────────────────────────────────────────
+        ColumnLayout {
+            Layout.fillWidth: true; spacing: 6
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8
+
+                Rectangle {
+                    Layout.fillWidth: true; height: 38
+                    color: mainPage.bgInput; radius: 6
+                    border.color: zenithUrlInput.activeFocus ? mainPage.accent : mainPage.border; border.width: 1
+
+                    TextInput {
+                        id: zenithUrlInput
+                        anchors.fill: parent; anchors.margins: 10
+                        color: mainPage.textLight; font.pixelSize: 13; clip: true; selectByMouse: true
+                        text: profileModel.getZenithUrl()
+                        Text { anchors.fill: parent; text: "URL Zenith (ex: https://zenithwakfu.com/builder/ilxnx)";
+                               color: mainPage.textMuted; font.pixelSize: 13; visible: !zenithUrlInput.text && !zenithUrlInput.activeFocus }
+                    }
+                }
+
+                // Import button
+                Rectangle {
+                    width: 90; height: 38; radius: 6
+                    color: zenithFetching ? mainPage.bgInput
+                         : zImportMouse.containsMouse ? mainPage.accentDim : mainPage.accent
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: zenithFetching ? "…" : "Importer"; color: zenithFetching ? mainPage.textMuted : "#0f0f1a"; font.pixelSize: 13; font.bold: true }
+                    MouseArea {
+                        id: zImportMouse; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: zenithFetching ? Qt.ArrowCursor : Qt.PointingHandCursor
+                        enabled: !zenithFetching
+                        onClicked: zenithDoFetch(zenithUrlInput.text)
+                    }
+                }
+
+                // Refresh button — only shown when a URL is already stored
+                Rectangle {
+                    visible: profileModel.getZenithUrl() !== ""
+                    width: 36; height: 38; radius: 6
+                    color: zRefreshMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.4) : mainPage.bgInput
+                    border.color: mainPage.accent; border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "↺"; color: mainPage.accent; font.pixelSize: 18 }
+                    MouseArea {
+                        id: zRefreshMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: zenithRefreshDialog.visible = true
+                    }
+                }
+            }
+
+            // Status line
+            Text {
+                visible: zenithStatus !== ""
+                text: zenithStatus
+                color: zenithStatusColor; font.pixelSize: 12
+                Layout.fillWidth: true; wrapMode: Text.WordWrap
+            }
+        }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: mainPage.border }
+
         // Stat grid
         Flickable {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -240,9 +389,16 @@ Item {
                                 horizontalAlignment: TextInput.AlignHCenter
                                 validator: IntValidator { bottom: -9999; top: 99999 }
 
-                                Component.onCompleted: {
+                                function refreshFromModel() {
                                     var val = profileModel.getEditingStat(statKey)
                                     text = val !== 0 ? val.toString() : ""
+                                }
+
+                                Component.onCompleted: refreshFromModel()
+
+                                Connections {
+                                    target: profileModel
+                                    function onEditingStatsChanged() { statInput.refreshFromModel() }
                                 }
 
                                 onTextChanged: {
@@ -319,6 +475,9 @@ Item {
                     editorMode = "new"
                     editingProfileName = ""
                     profNameInput.text = ""
+                    zenithUrlInput.text = ""
+                    zenithStatus = ""
+                    zenithFetching = false
                     editorOpen = true
                 }
             }

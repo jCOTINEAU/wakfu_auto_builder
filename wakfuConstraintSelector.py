@@ -25,10 +25,13 @@ QML_IMPORT_MAJOR_VERSION = 1
 @QmlElement
 class WakfuConstraintSelector(QObject):
 
+    excludedItemsChanged = Signal()
+
     def __init__(self,parent=None):
         super().__init__(parent=parent)
         self.constraintValueFromUi = {}
         self._active_profile_id = ""
+        self._excluded_item_ids = set()
 
         self.simpleConstraintModel = WakfuConstraintSelectorTemplate([
             LevelConstraint('levelSelector','Level <=',params=[],default=230,min=1,max=999),
@@ -147,6 +150,9 @@ class WakfuConstraintSelector(QObject):
            if item['definition']['item']['baseParameters']['rarity'] not in rarity:
                continue
 
+           if key in self._excluded_item_ids:
+               continue
+
            settings.VARIABLES[key]=self.solver.BoolVar(item['title']['fr']+str(item['definition']['item']['id']))
 
 
@@ -235,6 +241,49 @@ class WakfuConstraintSelector(QObject):
     @Slot(result=str)
     def getActiveProfileId(self):
         return self._active_profile_id
+
+    @Slot(int)
+    def addExcludedItem(self, item_id):
+        self._excluded_item_ids.add(item_id)
+        self.excludedItemsChanged.emit()
+
+    @Slot(int)
+    def removeExcludedItem(self, item_id):
+        self._excluded_item_ids.discard(item_id)
+        self.excludedItemsChanged.emit()
+
+    @Slot()
+    def clearExcludedItems(self):
+        self._excluded_item_ids.clear()
+        self.excludedItemsChanged.emit()
+
+    @Slot(int, result=bool)
+    def isItemExcluded(self, item_id):
+        return item_id in self._excluded_item_ids
+
+    @Slot(result=int)
+    def excludedItemCount(self):
+        return len(self._excluded_item_ids)
+
+    @Slot(result=str)
+    def getExcludedItemsJson(self):
+        return json.dumps(list(self._excluded_item_ids))
+
+    @Slot(str)
+    def setExcludedItemsFromJson(self, json_str):
+        try:
+            ids = json.loads(json_str)
+            self._excluded_item_ids = set(ids)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            self._excluded_item_ids = set()
+        self.excludedItemsChanged.emit()
+
+    @Slot(int, result=str)
+    def getItemName(self, item_id):
+        item = settings.ITEMS_DATA.get(item_id)
+        if item:
+            return item.get('title', {}).get('fr', str(item_id))
+        return str(item_id)
 
     def _applyStatProfile(self):
         """Apply base stats from the active profile to all constraints."""

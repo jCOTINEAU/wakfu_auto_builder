@@ -266,6 +266,15 @@ def compute_damage(
     )
 
 
+def compute_bonus_damage(main_damage_raw: float, percent: float) -> StochasticDamage:
+    """
+    Compute bonus damage (e.g. Hemorrhage) as a % of the main hit.
+    These are separate neutral hits that typically ignore resistances.
+    """
+    raw = main_damage_raw * percent / 100.0
+    return StochasticDamage.from_raw(raw)
+
+
 def compute_effective_mastery(
     caster: CasterStats,
     spell: Spell,
@@ -329,3 +338,10 @@ if __name__ == "__main__":
     print()
     print(f"EM:      {compute_effective_mastery(caster, spell):.0f}")
     print(f"EMcrit:  {compute_effective_mastery(caster, spell, include_crit=True):.0f}")
+
+    print()
+    hemorrhage = 40
+    bonus_nc = compute_bonus_damage(result.non_crit.raw, hemorrhage)
+    bonus_cr = compute_bonus_damage(result.crit.raw, hemorrhage)
+    print(f"Hemorrhage {hemorrhage}% (non-crit): {fmt(bonus_nc)}")
+    print(f"Hemorrhage {hemorrhage}% (crit):     {fmt(bonus_cr)}")

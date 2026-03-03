@@ -13,6 +13,7 @@ from damage_calculator import (
     Spell,
     StochasticDamage,
     TargetStats,
+    compute_bonus_damage,
     compute_damage,
     compute_effective_mastery,
     compute_spell_damage,
@@ -307,3 +308,32 @@ class TestRealValues:
         result = compute_damage(caster, target, spell)
         assert result.non_crit.low == 64
         assert result.non_crit.high == 65
+
+    def test_base22_melee_back_hemorrhage(self):
+        """
+        236 elem + 290 melee + 167 back mastery, 58% DI, base 22, back, 0 res.
+        In-game: observed 345 non-crit, 438 crit.
+        Hemorrhage 10%: observed 34 (on non-crit 345).
+        Hemorrhage 40%: observed 175 (on crit 438).
+        """
+        caster = CasterStats(
+            elemental_mastery=236,
+            damage_inflicted=58,
+            critical_chance=30,
+            melee_mastery=290,
+            back_mastery=167,
+        )
+        target = TargetStats(elemental_resistance=0)
+        spell = Spell(base=22, element=Element.AIR, orientation=Orientation.BACK, is_melee=True)
+
+        result = compute_damage(caster, target, spell)
+        assert result.non_crit.low == 344
+        assert result.non_crit.high == 345
+        assert result.crit.low == 438
+        assert result.crit.high == 439
+
+        h10_nc = compute_bonus_damage(result.non_crit.raw, 10)
+        assert h10_nc.low == 34
+
+        h40_cr = compute_bonus_damage(result.crit.raw, 40)
+        assert h40_cr.low == 175

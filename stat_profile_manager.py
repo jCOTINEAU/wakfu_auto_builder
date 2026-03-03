@@ -112,6 +112,7 @@ def _write_file(path: str, data: list) -> None:
 def save_profile(
     name: str,
     stats: Optional[dict] = None,
+    zenith_url: str = "",
     path: str = DEFAULT_SAVE_PATH,
 ) -> dict:
     """Save a new stat profile. Missing stat keys are filled with defaults."""
@@ -128,6 +129,7 @@ def save_profile(
         "name": name.strip() or "Sans nom",
         "created_at": datetime.now().isoformat(),
         "stats": merged_stats,
+        "zenith_url": zenith_url or "",
     }
 
     profiles.append(entry)
@@ -165,9 +167,10 @@ def overwrite_profile(
     profile_id: str,
     stats: Optional[dict] = None,
     name: Optional[str] = None,
+    zenith_url: Optional[str] = None,
     path: str = DEFAULT_SAVE_PATH,
 ) -> Optional[dict]:
-    """Overwrite an existing profile's stats (and optionally name).
+    """Overwrite an existing profile's stats (and optionally name / zenith_url).
 
     Returns the updated entry, or None if not found.
     """
@@ -182,6 +185,8 @@ def overwrite_profile(
                     if k in merged:
                         merged[k] = v
                 profile["stats"] = merged
+            if zenith_url is not None:
+                profile["zenith_url"] = zenith_url
             profile["created_at"] = datetime.now().isoformat()
             _write_file(path, profiles)
             return profile

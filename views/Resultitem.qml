@@ -73,22 +73,54 @@ Item {
 
                         Behavior on color { ColorAnimation { duration: 100 } }
 
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
+                        RowLayout {
+                            anchors.fill: parent
                             anchors.leftMargin: 12
-                            anchors.right: parent.right
-                            anchors.rightMargin: 12
-                            text: itemName
-                            color: mainPage.textLight
-                            font.pixelSize: 14
-                            elide: Text.ElideRight
+                            anchors.rightMargin: 8
+                            spacing: 6
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: itemName
+                                color: mainPage.textLight
+                                font.pixelSize: 14
+                                elide: Text.ElideRight
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            Rectangle {
+                                width: 60; height: 28; radius: 4
+                                color: excludeBtnMouse.containsMouse ? Qt.lighter(mainPage.negative, 1.2) : "transparent"
+                                border.color: mainPage.negative; border.width: 1
+                                visible: itemMouse.containsMouse
+                                Behavior on color { ColorAnimation { duration: 100 } }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Exclure"
+                                    color: mainPage.negative
+                                    font.pixelSize: 11; font.bold: true
+                                }
+
+                                MouseArea {
+                                    id: excludeBtnMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        constraintSelectorModel.addExcludedItem(itemId)
+                                        detailPopup.visible = false
+                                    }
+                                }
+                            }
                         }
 
                         MouseArea {
                             id: itemMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            propagateComposedEvents: true
+                            acceptedButtons: Qt.NoButton
 
                             onEntered: {
                                 detailPopup.itemDetailModel.setItemId(itemId)
