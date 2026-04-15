@@ -6,6 +6,23 @@ import WakfuStatProfileManager
 
 Item {
     anchors.fill: parent
+    id: constraintGridItem
+
+    property int excludedCount: 0
+    property var excludedList: []
+
+    Connections {
+        target: constraintSelectorModel
+        function onExcludedItemsChanged() {
+            constraintGridItem.excludedCount = constraintSelectorModel.excludedItemCount()
+            constraintGridItem.excludedList = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
+        }
+    }
+
+    Component.onCompleted: {
+        excludedCount = constraintSelectorModel.excludedItemCount()
+        excludedList = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
+    }
 
     WakfuStatProfileManager {
         id: profileSelectorModel
@@ -142,6 +159,82 @@ Item {
                             color: mainPage.textMuted
                             font.pixelSize: 12
                             font.italic: true
+                        }
+                    }
+                }
+            }
+
+            // ── Section: Excluded Items ──
+            Rectangle {
+                visible: constraintGridItem.excludedCount > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: excludedSection.implicitHeight + 32
+                color: mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.negative
+                border.width: 1
+
+                ColumnLayout {
+                    id: excludedSection
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Text {
+                            text: constraintGridItem.excludedCount + " item(s) exclu(s)"
+                            color: mainPage.negative
+                            font.pixelSize: 16; font.bold: true
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 100; height: 30; radius: 6
+                            color: clearAllExclMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.5) : mainPage.bgInput
+                            border.color: mainPage.negative; border.width: 1
+                            Behavior on color { ColorAnimation { duration: 100 } }
+                            Text { anchors.centerIn: parent; text: "Tout retirer"; color: mainPage.negative; font.pixelSize: 12; font.bold: true }
+                            MouseArea {
+                                id: clearAllExclMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: constraintSelectorModel.clearExcludedItems()
+                            }
+                        }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: {
+                                var ids = constraintGridItem.excludedList
+                                var result = []
+                                for (var i = 0; i < ids.length; i++) {
+                                    result.push({ itemId: ids[i], itemName: constraintSelectorModel.getItemName(ids[i]) })
+                                }
+                                return result
+                            }
+
+                            delegate: Rectangle {
+                                width: exclLabel.implicitWidth + 32; height: 28; radius: 4
+                                color: exclRemoveMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.4) : mainPage.bgInput
+                                border.color: mainPage.negative; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 100 } }
+
+                                Row {
+                                    anchors.centerIn: parent; spacing: 4
+                                    Text { id: exclLabel; text: modelData.itemName; color: mainPage.textLight; font.pixelSize: 11; elide: Text.ElideRight }
+                                    Text { text: "✕"; color: mainPage.negative; font.pixelSize: 11; font.bold: true }
+                                }
+
+                                MouseArea {
+                                    id: exclRemoveMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: constraintSelectorModel.removeExcludedItem(modelData.itemId)
+                                }
+                            }
                         }
                     }
                 }
@@ -328,19 +421,17 @@ Item {
             target: constraintPage
             function onVisibleChanged() {
                 if (constraintPage.visible) {
-                    var savedIdx = profileCombo.currentIndex
-                    var savedId = savedIdx > 0 ? profileSelectorModel.profileIdAt(savedIdx - 1) : ""
+                    var activeId = constraintSelectorModel.getActiveProfileId()
                     profileSelectorModel.reload()
                     var items = ["Aucun profil"]
                     for (var i = 0; i < profileSelectorModel.count(); i++) {
                         items.push(profileSelectorModel.profileNameAt(i))
                     }
                     profileCombo.model = items
-                    // Restore selection by ID
                     var newIdx = 0
-                    if (savedId) {
+                    if (activeId) {
                         for (var j = 0; j < profileSelectorModel.count(); j++) {
-                            if (profileSelectorModel.profileIdAt(j) === savedId) {
+                            if (profileSelectorModel.profileIdAt(j) === activeId) {
                                 newIdx = j + 1
                                 break
                             }

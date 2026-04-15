@@ -135,3 +135,6 @@ saved_stat_profiles.json
 
 # Cursor IDE
 .cursor/
+
+# Métier data (scraped game data)
+métier/

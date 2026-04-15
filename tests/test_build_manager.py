@@ -271,3 +271,133 @@ class TestOverwriteBuild:
 
         kept = build_manager.get_build(keep["id"], path=save_path)
         assert kept["items"] == sample_items
+
+
+# ── excluded_items ──
+
+
+class TestExcludedItems:
+    def test_save_stores_excluded_items(self, save_path, sample_items):
+        excluded = [100, 200, 300]
+        entry = build_manager.save_build(
+            "With exclusions", sample_items,
+            excluded_items=excluded, path=save_path,
+        )
+        assert entry["excluded_items"] == excluded
+
+    def test_save_defaults_to_empty_excluded(self, save_path, sample_items):
+        entry = build_manager.save_build("No exclusions", sample_items, path=save_path)
+        assert entry["excluded_items"] == []
+
+    def test_get_build_returns_excluded_items(self, save_path, sample_items):
+        excluded = [42, 99]
+        entry = build_manager.save_build(
+            "Test", sample_items,
+            excluded_items=excluded, path=save_path,
+        )
+        reloaded = build_manager.get_build(entry["id"], path=save_path)
+        assert reloaded["excluded_items"] == excluded
+
+    def test_overwrite_replaces_excluded_items(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Original", sample_items,
+            excluded_items=[10, 20], path=save_path,
+        )
+        new_excluded = [30, 40, 50]
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items,
+            excluded_items=new_excluded, path=save_path,
+        )
+        assert result["excluded_items"] == new_excluded
+
+    def test_overwrite_clears_excluded_when_none(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Had exclusions", sample_items,
+            excluded_items=[1, 2, 3], path=save_path,
+        )
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items, path=save_path,
+        )
+        assert result["excluded_items"] == []
+
+    def test_excluded_items_persist_across_reload(self, save_path, sample_items):
+        excluded = [555, 666]
+        entry = build_manager.save_build(
+            "Persist test", sample_items,
+            excluded_items=excluded, path=save_path,
+        )
+        builds = build_manager.list_builds(path=save_path)
+        found = next(b for b in builds if b["id"] == entry["id"])
+        assert found["excluded_items"] == excluded
+
+
+# ── profile_id ──
+
+
+class TestProfileId:
+    def test_save_stores_profile_id(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "With profile", sample_items,
+            profile_id="prof-abc-123", path=save_path,
+        )
+        assert entry["profile_id"] == "prof-abc-123"
+
+    def test_save_defaults_to_empty_profile_id(self, save_path, sample_items):
+        entry = build_manager.save_build("No profile", sample_items, path=save_path)
+        assert entry["profile_id"] == ""
+
+    def test_get_build_returns_profile_id(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Test", sample_items,
+            profile_id="some-id", path=save_path,
+        )
+        reloaded = build_manager.get_build(entry["id"], path=save_path)
+        assert reloaded["profile_id"] == "some-id"
+
+    def test_overwrite_replaces_profile_id(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Original", sample_items,
+            profile_id="old-prof", path=save_path,
+        )
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items,
+            profile_id="new-prof", path=save_path,
+        )
+        assert result["profile_id"] == "new-prof"
+
+    def test_overwrite_clears_profile_when_empty(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Had profile", sample_items,
+            profile_id="old-prof", path=save_path,
+        )
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items, path=save_path,
+        )
+        assert result["profile_id"] == ""
+
+    def test_profile_id_persists_across_reload(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Persist", sample_items,
+            profile_id="persist-prof", path=save_path,
+        )
+        builds = build_manager.list_builds(path=save_path)
+        found = next(b for b in builds if b["id"] == entry["id"])
+        assert found["profile_id"] == "persist-prof"
+
+    def test_full_build_with_all_fields(self, save_path, sample_items, sample_stats):
+        """Integration test: save a build with all fields and verify on reload."""
+        entry = build_manager.save_build(
+            "Full build", sample_items,
+            constraints={"levelSelector": 200},
+            stats=sample_stats,
+            excluded_items=[42, 99],
+            profile_id="full-prof-id",
+            path=save_path,
+        )
+        reloaded = build_manager.get_build(entry["id"], path=save_path)
+        assert reloaded["name"] == "Full build"
+        assert reloaded["items"] == sample_items
+        assert reloaded["constraints"] == {"levelSelector": 200}
+        assert reloaded["stats"] == sample_stats
+        assert reloaded["excluded_items"] == [42, 99]
+        assert reloaded["profile_id"] == "full-prof-id"

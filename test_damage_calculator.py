@@ -8,14 +8,12 @@ import pytest
 from damage_calculator import (
     CasterStats,
     DamageResult,
-    Element,
     Orientation,
     Spell,
     StochasticDamage,
     TargetStats,
     compute_bonus_damage,
     compute_damage,
-    compute_effective_mastery,
     compute_spell_damage,
     compute_spell_damage_raw,
     flat_res_to_percent,
@@ -93,18 +91,26 @@ class TestBasicDamage:
         dmg = compute_spell_damage(caster, target, spell, is_crit=True)
         assert dmg == 100
 
+    def test_custom_crit_multiplier(self):
+        caster = CasterStats()
+        target = TargetStats()
+        spell = Spell(base=100, can_crit=True, crit_multiplier=1.5)
+        dmg = compute_spell_damage(caster, target, spell, is_crit=True)
+        # 100 * 1.5 = 150
+        assert dmg == 150
+
     def test_orientation_side(self):
         caster = CasterStats()
         target = TargetStats()
-        spell = Spell(base=100, orientation=Orientation.SIDE)
-        dmg = compute_spell_damage(caster, target, spell, is_crit=False)
+        spell = Spell(base=100)
+        dmg = compute_spell_damage(caster, target, spell, is_crit=False, orientation=Orientation.SIDE)
         assert dmg == 110
 
     def test_orientation_back(self):
         caster = CasterStats()
         target = TargetStats()
-        spell = Spell(base=100, orientation=Orientation.BACK)
-        dmg = compute_spell_damage(caster, target, spell, is_crit=False)
+        spell = Spell(base=100)
+        dmg = compute_spell_damage(caster, target, spell, is_crit=False, orientation=Orientation.BACK)
         assert dmg == 125
 
     def test_damage_inflicted_bonus(self):
@@ -172,33 +178,6 @@ class TestComputeDamage:
 
 
 # ---------------------------------------------------------------------------
-# Effective Mastery
-# ---------------------------------------------------------------------------
-
-class TestEffectiveMastery:
-
-    def test_em_zero(self):
-        caster = CasterStats()
-        spell = Spell(base=100)
-        em = compute_effective_mastery(caster, spell)
-        assert em == pytest.approx(0.0)
-
-    def test_em_basic(self):
-        caster = CasterStats(elemental_mastery=1000, damage_inflicted=0)
-        spell = Spell(base=100)
-        em = compute_effective_mastery(caster, spell)
-        # (1100 * 100 / 100) - 100 = 1000
-        assert em == pytest.approx(1000.0)
-
-    def test_em_with_di(self):
-        caster = CasterStats(elemental_mastery=1000, damage_inflicted=50)
-        spell = Spell(base=100)
-        em = compute_effective_mastery(caster, spell)
-        # (1100 * 150 / 100) - 100 = 1550
-        assert em == pytest.approx(1550.0)
-
-
-# ---------------------------------------------------------------------------
 # Placeholder for real in-game values
 # ---------------------------------------------------------------------------
 
@@ -217,9 +196,9 @@ class TestRealValues:
             critical_chance=3,
         )
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=7, orientation=Orientation.FRONT)
+        spell = Spell(base=7)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.FRONT)
         assert result.non_crit.raw == pytest.approx(7.56)
         assert result.non_crit.low == 7
         assert result.non_crit.high == 8
@@ -232,9 +211,9 @@ class TestRealValues:
         """
         caster = CasterStats(elemental_mastery=25, damage_inflicted=8, critical_chance=3)
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=7, orientation=Orientation.BACK)
+        spell = Spell(base=7)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.BACK)
         assert result.non_crit.low == 11
         assert result.non_crit.high == 12
 
@@ -245,9 +224,9 @@ class TestRealValues:
         """
         caster = CasterStats(elemental_mastery=25, damage_inflicted=8, critical_chance=3)
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=7, orientation=Orientation.FRONT)
+        spell = Spell(base=7)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.FRONT)
         assert result.non_crit.raw == pytest.approx(9.45)
         assert result.non_crit.low == 9
         assert result.non_crit.high == 10
@@ -264,9 +243,9 @@ class TestRealValues:
             distance_mastery=120,
         )
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=38, orientation=Orientation.FRONT, is_melee=False)
+        spell = Spell(base=38, is_melee=False)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.FRONT)
         assert result.non_crit.low == 161
         assert result.non_crit.high == 162
 
@@ -283,9 +262,9 @@ class TestRealValues:
             distance_mastery=120,
         )
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=38, orientation=Orientation.BACK, is_melee=False)
+        spell = Spell(base=38, is_melee=False)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.BACK)
         assert result.non_crit.low == 244
         assert result.non_crit.high == 245
         assert result.crit.low == 308
@@ -303,9 +282,9 @@ class TestRealValues:
             distance_mastery=120,
         )
         target = TargetStats(elemental_resistance=percent_res_to_flat(60))
-        spell = Spell(base=38, orientation=Orientation.FRONT, is_melee=False)
+        spell = Spell(base=38, is_melee=False)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.FRONT)
         assert result.non_crit.low == 64
         assert result.non_crit.high == 65
 
@@ -324,9 +303,9 @@ class TestRealValues:
             back_mastery=167,
         )
         target = TargetStats(elemental_resistance=0)
-        spell = Spell(base=22, element=Element.AIR, orientation=Orientation.BACK, is_melee=True)
+        spell = Spell(base=22, is_melee=True)
 
-        result = compute_damage(caster, target, spell)
+        result = compute_damage(caster, target, spell, orientation=Orientation.BACK)
         assert result.non_crit.low == 344
         assert result.non_crit.high == 345
         assert result.crit.low == 438

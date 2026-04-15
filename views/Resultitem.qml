@@ -10,6 +10,17 @@ Item {
     anchors.fill: parent
     id: resultItem
 
+    property int excludedCount: 0
+
+    Connections {
+        target: constraintSelectorModel
+        function onExcludedItemsChanged() {
+            resultItem.excludedCount = constraintSelectorModel.excludedItemCount()
+        }
+    }
+
+    Component.onCompleted: excludedCount = constraintSelectorModel.excludedItemCount()
+
     WakfuBuildManager {
         id: buildManager
         onSaveSuccess: {
@@ -439,12 +450,14 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             var cJson = constraintSelectorModel.exportConstraints()
+                            var exJson = constraintSelectorModel.getExcludedItemsJson()
+                            var profId = constraintSelectorModel.getActiveProfileId()
                             if (overwriteSelector.currentIndex === 0) {
-                                buildManager.saveCurrent(saveNameInput.text, cJson)
+                                buildManager.saveCurrent(saveNameInput.text, cJson, exJson, profId)
                             } else {
                                 var buildIdx = overwriteSelector.currentIndex - 1
                                 var bid = buildManager.buildIdAt(buildIdx)
-                                buildManager.overwriteCurrent(bid, cJson)
+                                buildManager.overwriteCurrent(bid, cJson, exJson, profId)
                             }
                             saveNameInput.text = ""
                             overwriteSelector.currentIndex = 0
@@ -503,80 +516,133 @@ Item {
     }
 
     // ── Bottom Button Bar ──
-    Row {
+    Column {
         id: bottomBar
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        spacing: 16
+        spacing: 10
 
-        // Back button
+        // Excluded items banner
         Rectangle {
-            id: backButton
-            width: 260
-            height: 50
-            radius: mainPage.radius
-            color: backMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.3) : mainPage.bgInput
-            border.color: mainPage.accent
-            border.width: 1
+            visible: resultItem.excludedCount > 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: excludedRow.implicitWidth + 24
+            height: 36; radius: 6
+            color: Qt.rgba(mainPage.negative.r, mainPage.negative.g, mainPage.negative.b, 0.15)
+            border.color: mainPage.negative; border.width: 1
 
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Row {
+                id: excludedRow
+                anchors.centerIn: parent; spacing: 8
 
-            Text {
-                anchors.centerIn: parent
-                text: "← Retour aux contraintes"
-                color: mainPage.accent
-                font.pixelSize: 16
-                font.bold: true
-            }
+                Text {
+                    text: resultItem.excludedCount + " item(s) exclu(s)"
+                    color: mainPage.negative; font.pixelSize: 13; font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
 
-            MouseArea {
-                id: backMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    resultPage.visible = false
-                    constraintPage.visible = true
+                Rectangle {
+                    width: 80; height: 24; radius: 4
+                    color: reoptMouse.containsMouse ? mainPage.accentDim : mainPage.accent
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "Re-optimiser"; color: "#0f0f1a"; font.pixelSize: 11; font.bold: true }
+                    MouseArea {
+                        id: reoptMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            constraintSelectorModel.solve()
+                            wakItemList.model.reload()
+                            itemSumDetail.model.reload()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 24; height: 24; radius: 4
+                    color: clearExclMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.5) : mainPage.bgInput
+                    border.color: mainPage.negative; border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "✕"; color: mainPage.negative; font.pixelSize: 12 }
+                    MouseArea {
+                        id: clearExclMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: constraintSelectorModel.clearExcludedItems()
+                    }
                 }
             }
         }
 
-        // Save button
-        Rectangle {
-            id: saveButton
-            width: 200
-            height: 50
-            radius: mainPage.radius
-            color: saveMouse.containsMouse ? mainPage.accentDim : mainPage.accent
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 16
 
-            Behavior on color { ColorAnimation { duration: 150 } }
+            // Back button
+            Rectangle {
+                id: backButton
+                width: 260
+                height: 50
+                radius: mainPage.radius
+                color: backMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.3) : mainPage.bgInput
+                border.color: mainPage.accent
+                border.width: 1
 
-            Text {
-                anchors.centerIn: parent
-                text: "💾  Sauvegarder"
-                color: "#0f0f1a"
-                font.pixelSize: 16
-                font.bold: true
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "← Retour aux contraintes"
+                    color: mainPage.accent
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                MouseArea {
+                    id: backMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        resultPage.visible = false
+                        constraintPage.visible = true
+                    }
+                }
             }
 
-            MouseArea {
-                id: saveMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    buildManager.reload()
-                    overwriteSelector.currentIndex = 0
-                    overwriteSelector.model = (function() {
-                        var items = ["Nouveau build"]
-                        for (var i = 0; i < buildManager.count(); i++) {
-                            items.push("Écraser : " + buildManager.buildNameAt(i))
-                        }
-                        return items
-                    })()
-                    saveDialog.visible = true
-                    saveNameInput.forceActiveFocus()
+            // Save button
+            Rectangle {
+                id: saveButton
+                width: 200
+                height: 50
+                radius: mainPage.radius
+                color: saveMouse.containsMouse ? mainPage.accentDim : mainPage.accent
+
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "Sauvegarder"
+                    color: "#0f0f1a"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                MouseArea {
+                    id: saveMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        buildManager.reload()
+                        overwriteSelector.currentIndex = 0
+                        overwriteSelector.model = (function() {
+                            var items = ["Nouveau build"]
+                            for (var i = 0; i < buildManager.count(); i++) {
+                                items.push("Écraser : " + buildManager.buildNameAt(i))
+                            }
+                            return items
+                        })()
+                        saveDialog.visible = true
+                        saveNameInput.forceActiveFocus()
+                    }
                 }
             }
         }

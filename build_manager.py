@@ -35,6 +35,8 @@ def save_build(
     items: list,
     constraints: Optional[dict] = None,
     stats: Optional[list] = None,
+    excluded_items: Optional[list] = None,
+    profile_id: str = "",
     path: str = DEFAULT_SAVE_PATH,
 ) -> dict:
     """Save a build and return the created entry.
@@ -49,6 +51,10 @@ def save_build(
         Snapshot of constraint values (name -> value).
     stats : list, optional
         Snapshot of stat summary lines (list of ``{"effect": ..., "effectId": ..., "value": ...}``).
+    excluded_items : list, optional
+        List of item IDs excluded from the optimization.
+    profile_id : str
+        ID of the stat profile used during optimization (empty string if none).
     path : str
         File path for the JSON store.
 
@@ -66,6 +72,8 @@ def save_build(
         "items": items,
         "constraints": constraints or {},
         "stats": stats or [],
+        "excluded_items": excluded_items or [],
+        "profile_id": profile_id,
     }
 
     builds.append(entry)
@@ -104,6 +112,8 @@ def overwrite_build(
     items: list,
     constraints: Optional[dict] = None,
     stats: Optional[list] = None,
+    excluded_items: Optional[list] = None,
+    profile_id: str = "",
     path: str = DEFAULT_SAVE_PATH,
 ) -> Optional[dict]:
     """Overwrite an existing build's data while keeping its id and name.
@@ -118,6 +128,10 @@ def overwrite_build(
         New constraint snapshot.
     stats : list, optional
         New stat snapshot.
+    excluded_items : list, optional
+        List of item IDs excluded from the optimization.
+    profile_id : str
+        ID of the stat profile used during optimization.
     path : str
         File path for the JSON store.
 
@@ -132,6 +146,8 @@ def overwrite_build(
             build["items"] = items
             build["constraints"] = constraints or {}
             build["stats"] = stats or []
+            build["excluded_items"] = excluded_items or []
+            build["profile_id"] = profile_id
             build["created_at"] = datetime.now().isoformat()
             _write_file(path, builds)
             return build

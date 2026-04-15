@@ -31,6 +31,8 @@ class WakfuBuildManager(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._builds = build_manager.list_builds()
+        self._last_loaded_excluded = []
+        self._last_loaded_profile_id = ""
 
     # ── QAbstractListModel interface ──
 
@@ -69,8 +71,8 @@ class WakfuBuildManager(QAbstractListModel):
         self._builds = build_manager.list_builds()
         self.endResetModel()
 
-    @Slot(str, str)
-    def saveCurrent(self, name, constraints_json):
+    @Slot(str, str, str, str)
+    def saveCurrent(self, name, constraints_json, excluded_json, profile_id):
         """Save the current optimization result with constraint snapshot."""
         items = []
         for entry in settings.OPTIMIZED_ITEM_LIST:
@@ -81,6 +83,11 @@ class WakfuBuildManager(QAbstractListModel):
         except (json.JSONDecodeError, ValueError, TypeError):
             constraints = {}
 
+        try:
+            excluded = json.loads(excluded_json)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            excluded = []
+
         stats = self._snapshot_stats()
 
         build_manager.save_build(
@@ -88,6 +95,8 @@ class WakfuBuildManager(QAbstractListModel):
             items=items,
             constraints=constraints,
             stats=stats,
+            excluded_items=excluded,
+            profile_id=profile_id,
         )
         self.reload()
         self.saveSuccess.emit()
@@ -100,10 +109,22 @@ class WakfuBuildManager(QAbstractListModel):
             return
         settings.OPTIMIZED_ITEM_LIST = build.get("items", [])
         constraints_json = json.dumps(build.get("constraints", {}))
+        self._last_loaded_excluded = build.get("excluded_items", [])
+        self._last_loaded_profile_id = build.get("profile_id", "")
         self.loadSuccess.emit(constraints_json)
 
-    @Slot(str, str)
-    def overwriteCurrent(self, build_id, constraints_json):
+    @Slot(result=str)
+    def getLastLoadedExcludedJson(self):
+        """Return excluded items from the last loaded build as JSON."""
+        return json.dumps(self._last_loaded_excluded)
+
+    @Slot(result=str)
+    def getLastLoadedProfileId(self):
+        """Return the profile ID from the last loaded build."""
+        return self._last_loaded_profile_id
+
+    @Slot(str, str, str, str)
+    def overwriteCurrent(self, build_id, constraints_json, excluded_json, profile_id):
         """Overwrite an existing build with the current optimization result."""
         items = []
         for entry in settings.OPTIMIZED_ITEM_LIST:
@@ -114,6 +135,11 @@ class WakfuBuildManager(QAbstractListModel):
         except (json.JSONDecodeError, ValueError, TypeError):
             constraints = {}
 
+        try:
+            excluded = json.loads(excluded_json)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            excluded = []
+
         stats = self._snapshot_stats()
 
         build_manager.overwrite_build(
@@ -121,6 +147,8 @@ class WakfuBuildManager(QAbstractListModel):
             items=items,
             constraints=constraints,
             stats=stats,
+            excluded_items=excluded,
+            profile_id=profile_id,
         )
         self.reload()
         self.saveSuccess.emit()

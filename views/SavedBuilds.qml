@@ -11,6 +11,14 @@ Item {
         id: savedBuildModel
         onLoadSuccess: function(constraintsJson) {
             constraintSelectorModel.importConstraints(constraintsJson)
+            var excludedJson = savedBuildModel.getLastLoadedExcludedJson()
+            constraintSelectorModel.setExcludedItemsFromJson(excludedJson)
+            var profileId = savedBuildModel.getLastLoadedProfileId()
+            if (profileId) {
+                constraintSelectorModel.setActiveProfile(profileId)
+            } else {
+                constraintSelectorModel.clearActiveProfile()
+            }
             savedBuildsPage.visible = false
             resultPage.visible = true
         }

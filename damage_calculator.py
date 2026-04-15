@@ -12,19 +12,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class Element(Enum):
-    FIRE = "fire"
-    WATER = "water"
-    EARTH = "earth"
-    AIR = "air"
-    LIGHT = "light"
-    STASIS = "stasis"
-
-
-class Orientation(Enum):
+class Orientation(StrEnum):
     FRONT = "front"
     SIDE = "side"
     BACK = "back"
@@ -45,10 +36,10 @@ class CasterStats:
     distance_mastery: int = 0
     berserk_mastery: int = 0
     back_mastery: int = 0
-    heal_mastery: int = 0
 
-    critical_chance: int = 0  # in %, clamped 0-100
+    critical_chance: int = 0
     damage_inflicted: int = 0  # % DI (regular + conditional combined)
+    final_damage: int = 0  # % DF (final damage multiplier)
 
     is_berserk: bool = False  # below 50% HP
 
@@ -61,15 +52,14 @@ class TargetStats:
 
     parade_chance: int = 0  # % chance to block
     has_expert_block: bool = False  # sublimation Expert des Parades
-    damage_received: int = 100  # % Dommages Reçus (default 100%)
+    damage_received: int = 0  # % Dommages Reçus (0 = neutral, +20 = takes 20% more)
 
 
 @dataclass
 class Spell:
-    base: float = 0
-    element: Element = Element.FIRE
+    base: int = 0
     can_crit: bool = True
-    orientation: Orientation = Orientation.FRONT
+    crit_multiplier: float = 1.25  # base multiplier on crit (default 1.25, some spells differ)
 
     is_melee: bool = True  # target within 1-2 cells
     is_indirect: bool = False  # poison, glyph, trap
@@ -158,31 +148,30 @@ def compute_spell_damage_raw(
     target: TargetStats,
     spell: Spell,
     is_crit: bool,
+    orientation: Orientation = Orientation.FRONT,
     is_parried: bool = False,
 ) -> float:
     """Compute exact (non-rounded) damage for a single spell hit."""
-    orientation = Orientation.FRONT if spell.is_indirect else spell.orientation
+    effective_orientation = Orientation.FRONT if spell.is_indirect else orientation
 
     base = spell.base * (1 + spell.bonus_base_percent / 100.0)
 
-    # The game rounds the crit base up before applying other multipliers
+    # The game rounds the crit base to the nearest integer before applying other multipliers
     if is_crit and spell.can_crit:
-        base = math.ceil(base * 1.25)
+        base = round(base * spell.crit_multiplier)
 
-    masteries = compute_applicable_masteries(caster, spell, is_crit, orientation)
+    masteries = compute_applicable_masteries(caster, spell, is_crit, effective_orientation)
     mastery_factor = 1.0 + masteries / 100.0
 
-    orientation_bonus = 1.0 if spell.is_indirect else ORIENTATION_BONUS[orientation]
+    orientation_bonus = 1.0 if spell.is_indirect else ORIENTATION_BONUS[effective_orientation]
 
-    total_di = caster.damage_inflicted + spell.bonus_damage_inflicted
+    total_di = caster.damage_inflicted + spell.bonus_damage_inflicted + target.damage_received
     di_factor = 1.0 + total_di / 100.0
 
     res_pct = compute_effective_resistance(
-        target, is_crit, orientation, spell.is_indirect
+        target, is_crit, effective_orientation, spell.is_indirect
     )
     res_factor = 1.0 - res_pct / 100.0
-
-    dr_factor = target.damage_received / 100.0
 
     parade_coeff = compute_parade_coefficient(is_parried, target.has_expert_block)
 
@@ -192,7 +181,6 @@ def compute_spell_damage_raw(
         * orientation_bonus
         * di_factor
         * res_factor
-        * dr_factor
         * parade_coeff
     )
 
@@ -202,10 +190,11 @@ def compute_spell_damage(
     target: TargetStats,
     spell: Spell,
     is_crit: bool,
+    orientation: Orientation = Orientation.FRONT,
     is_parried: bool = False,
 ) -> int:
     """Compute floored damage (minimum possible roll)."""
-    return int(math.floor(compute_spell_damage_raw(caster, target, spell, is_crit, is_parried)))
+    return int(math.floor(compute_spell_damage_raw(caster, target, spell, is_crit, orientation, is_parried)))
 
 
 @dataclass
@@ -216,12 +205,12 @@ class StochasticDamage:
     high: int = 0      # ceil
     chance_high: float = 0.0  # probability of getting `high`
 
-    @staticmethod
-    def from_raw(raw: float) -> StochasticDamage:
+    @classmethod
+    def from_raw(cls, raw: float) -> StochasticDamage:
         low = int(math.floor(raw))
         high = int(math.ceil(raw))
         chance_high = raw - low if high != low else 0.0
-        return StochasticDamage(raw=raw, low=low, high=high, chance_high=chance_high)
+        return cls(raw=raw, low=low, high=high, chance_high=chance_high)
 
 
 @dataclass
@@ -239,17 +228,18 @@ def compute_damage(
     caster: CasterStats,
     target: TargetStats,
     spell: Spell,
+    orientation: Orientation = Orientation.FRONT,
 ) -> DamageResult:
     """Compute all damage variants for a spell and return a summary."""
     cc = min(max(caster.critical_chance + spell.bonus_critical_chance, 0), 100)
     cc_ratio = cc / 100.0
 
-    nc_raw = compute_spell_damage_raw(caster, target, spell, is_crit=False)
-    cr_raw = compute_spell_damage_raw(caster, target, spell, is_crit=True) if spell.can_crit else nc_raw
+    nc_raw = compute_spell_damage_raw(caster, target, spell, is_crit=False, orientation=orientation)
+    cr_raw = compute_spell_damage_raw(caster, target, spell, is_crit=True, orientation=orientation) if spell.can_crit else nc_raw
     average = nc_raw * (1.0 - cc_ratio) + cr_raw * cc_ratio
 
-    ncp_raw = compute_spell_damage_raw(caster, target, spell, is_crit=False, is_parried=True)
-    crp_raw = compute_spell_damage_raw(caster, target, spell, is_crit=True, is_parried=True) if spell.can_crit else ncp_raw
+    ncp_raw = compute_spell_damage_raw(caster, target, spell, is_crit=False, orientation=orientation, is_parried=True)
+    crp_raw = compute_spell_damage_raw(caster, target, spell, is_crit=True, orientation=orientation, is_parried=True) if spell.can_crit else ncp_raw
 
     parade_pct = target.parade_chance / 100.0
     avg_nc = nc_raw * (1.0 - parade_pct) + ncp_raw * parade_pct
@@ -275,34 +265,6 @@ def compute_bonus_damage(main_damage_raw: float, percent: float) -> StochasticDa
     return StochasticDamage.from_raw(raw)
 
 
-def compute_effective_mastery(
-    caster: CasterStats,
-    spell: Spell,
-    include_crit: bool = False,
-) -> float:
-    """
-    EM = ((Masteries + 100) × (% DI + 100) / 100) - 100
-    EMcrit multiplies the base by 1.25 and includes crit mastery.
-    """
-    masteries = caster.elemental_mastery
-    if spell.is_melee:
-        masteries += caster.melee_mastery
-    else:
-        masteries += caster.distance_mastery
-    if caster.is_berserk:
-        masteries += caster.berserk_mastery
-
-    di = caster.damage_inflicted
-
-    if not include_crit:
-        em = ((masteries + 100) * (di + 100) / 100.0) - 100
-    else:
-        masteries += caster.critical_mastery
-        em = (((masteries + 100) * (di + 100) / 100.0) - 100) * 1.25
-
-    return em
-
-
 # ---------------------------------------------------------------------------
 # CLI demo
 # ---------------------------------------------------------------------------
@@ -319,9 +281,9 @@ if __name__ == "__main__":
         elemental_resistance=400,
         parade_chance=20,
     )
-    spell = Spell(base=115, element=Element.FIRE, orientation=Orientation.FRONT)
+    spell = Spell(base=115)
 
-    result = compute_damage(caster, target, spell)
+    result = compute_damage(caster, target, spell, orientation=Orientation.FRONT)
 
     def fmt(sd: StochasticDamage) -> str:
         if sd.low == sd.high:
@@ -335,10 +297,6 @@ if __name__ == "__main__":
     print(f"Non-crit (parried): {fmt(result.non_crit_parried)}")
     print(f"Crit (parried):     {fmt(result.crit_parried)}")
     print(f"Average w/ parade:  {result.average_with_parade:.2f}")
-    print()
-    print(f"EM:      {compute_effective_mastery(caster, spell):.0f}")
-    print(f"EMcrit:  {compute_effective_mastery(caster, spell, include_crit=True):.0f}")
-
     print()
     hemorrhage = 40
     bonus_nc = compute_bonus_damage(result.non_crit.raw, hemorrhage)
