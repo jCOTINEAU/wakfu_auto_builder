@@ -1,0 +1,16 @@
+{
+  "id": "saignee",
+  "name": "Saignée",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 3
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 21,
+      "damage_crit": 26
+    }
+  ]
+}

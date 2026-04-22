@@ -1,0 +1,32 @@
+{
+  "iterations": 10000,
+  "seed": 42,
+  "level": 50,
+
+  "caster": {
+    "elemental_mastery": 132,
+    "back_mastery": 223,
+    "melee_mastery": 290,
+    "critical_chance": 100,
+    "damage_inflicted": 76
+  },
+
+  "target": {
+    "elemental_resistance": 0,
+    "parade_chance": 0
+  },
+
+  "steps": [
+    {
+      "name": "Mise dos (hemorragie)",
+      "spell": "Sram/mise",
+      "orientation": "back",
+      "spell_modifiers": {
+        "bonus_base_percent": 100
+      },
+      "caster_modifiers": {
+        "final_damage": 40
+      }
+    }
+  ]
+}

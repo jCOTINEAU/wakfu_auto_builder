@@ -57,9 +57,9 @@ class TargetStats:
 
 @dataclass
 class Spell:
-    base: int = 0
+    base: int = 0       # DJ: non-crit base as shown in-game
+    crit_base: int = 0  # DCJ: crit base as shown in-game (0 = cannot crit)
     can_crit: bool = True
-    crit_multiplier: float = 1.25  # base multiplier on crit (default 1.25, some spells differ)
 
     is_melee: bool = True  # target within 1-2 cells
     is_indirect: bool = False  # poison, glyph, trap
@@ -68,7 +68,7 @@ class Spell:
     bonus_mastery: int = 0
     bonus_critical_mastery: int = 0
     bonus_critical_chance: int = 0
-    bonus_base_percent: int = 0  # +X% on base value
+    bonus_base_percent: int = 0  # +X% on base value (applied equally to base and crit_base)
 
 
 # ---------------------------------------------------------------------------
@@ -154,11 +154,10 @@ def compute_spell_damage_raw(
     """Compute exact (non-rounded) damage for a single spell hit."""
     effective_orientation = Orientation.FRONT if spell.is_indirect else orientation
 
-    base = spell.base * (1 + spell.bonus_base_percent / 100.0)
-
-    # The game rounds the crit base to the nearest integer before applying other multipliers
     if is_crit and spell.can_crit:
-        base = round(base * spell.crit_multiplier)
+        base = spell.crit_base * (1 + spell.bonus_base_percent / 100.0)
+    else:
+        base = spell.base * (1 + spell.bonus_base_percent / 100.0)
 
     masteries = compute_applicable_masteries(caster, spell, is_crit, effective_orientation)
     mastery_factor = 1.0 + masteries / 100.0
@@ -167,6 +166,8 @@ def compute_spell_damage_raw(
 
     total_di = caster.damage_inflicted + spell.bonus_damage_inflicted + target.damage_received
     di_factor = 1.0 + total_di / 100.0
+
+    df_factor = 1.0 + caster.final_damage / 100.0
 
     res_pct = compute_effective_resistance(
         target, is_crit, effective_orientation, spell.is_indirect
@@ -180,6 +181,7 @@ def compute_spell_damage_raw(
         * mastery_factor
         * orientation_bonus
         * di_factor
+        * df_factor
         * res_factor
         * parade_coeff
     )

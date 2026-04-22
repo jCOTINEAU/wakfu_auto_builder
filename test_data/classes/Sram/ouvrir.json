@@ -1,0 +1,16 @@
+{
+  "id": "ouvrir",
+  "name": "Ouvrir",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 2
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 15,
+      "damage_crit": 18
+    }
+  ]
+}

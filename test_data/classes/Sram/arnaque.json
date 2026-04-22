@@ -1,0 +1,16 @@
+{
+  "id": "arnaque",
+  "name": "Arnaque",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 2
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 14,
+      "damage_crit": 17
+    }
+  ]
+}

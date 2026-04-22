@@ -1,0 +1,16 @@
+{
+  "id": "perfide",
+  "name": "Perfide",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 3
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 28,
+      "damage_crit": 35
+    }
+  ]
+}

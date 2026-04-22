@@ -1,0 +1,16 @@
+{
+  "id": "lumiere",
+  "name": "Lumière",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 0
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 20,
+      "damage_crit": 25
+    }
+  ]
+}

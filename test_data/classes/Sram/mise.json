@@ -1,0 +1,17 @@
+{
+    "id": "mise",
+    "name": "Mise",
+    "description": "",
+    "metadata": {
+      "description": "",
+      "cost_ap": 4
+    },
+    "damage_per_level": [
+      {
+        "level": 50,
+        "damage_non_crit": 48,
+        "damage_crit": 59
+      }
+    ]
+  }
+  

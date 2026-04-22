@@ -1,0 +1,16 @@
+{
+  "id": "trauma",
+  "name": "Trauma",
+  "description": "",
+  "metadata": {
+    "description": "",
+    "cost_ap": 4
+  },
+  "damage_per_level": [
+    {
+      "level": 50,
+      "damage_non_crit": 30,
+      "damage_crit": 37
+    }
+  ]
+}

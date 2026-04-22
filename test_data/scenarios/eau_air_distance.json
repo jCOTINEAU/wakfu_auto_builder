@@ -1,0 +1,140 @@
+{
+  "iterations": 10000,
+  "seed": 42,
+  "level": 50,
+
+  "caster": {
+    "elemental_mastery": 274,
+    "back_mastery": 223,
+    "melee_mastery": 290,
+    "critical_chance": 35,
+    "damage_inflicted": 116
+  },
+
+  "target": {
+    "elemental_resistance": 0,
+    "parade_chance": 0
+  },
+
+  "steps": [
+    {
+      "name": "Arnaque dos",
+      "spell": "Sram/arnaque",
+      "orientation": "back"
+    },
+    {
+      "name": "Saignee dos (malus -142 elem)",
+      "spell": "Sram/saignee",
+      "orientation": "back",
+      "caster_modifiers": { "elemental_mastery": -142, "final_damage": 26 }
+    },
+    {
+      "name": "Perfide dos (-40% armure)",
+      "spell": "Sram/perfide",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 26 },
+      "spell_modifiers": { "bonus_base_percent": -40 }
+    },
+    {
+      "name": "Klepto dos",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 26 }
+    },
+    {
+      "name": "Lumiere dos",
+      "spell": "Commun/lumiere",
+      "orientation": "back"
+    },
+    {
+      "name": "Perfide dos (-40% armure)",
+      "spell": "Sram/perfide",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 26 },
+      "spell_modifiers": { "bonus_base_percent": -40 }
+    },
+    {
+      "name": "Klepto dos",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 26 }
+    },
+    {
+      "name": "Lumiere dos",
+      "spell": "Commun/lumiere",
+      "orientation": "back"
+    },
+    {
+      "name": "Klepto dos",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 26 }
+    },
+    {
+      "name": "FIN T1",
+      "spell": "Sram/empty",
+      "orientation": "back"
+    },
+    {
+      "name": "Saignee dos T2 opener (malus -142 elem)",
+      "spell": "Sram/saignee",
+      "orientation": "front",
+      "caster_modifiers": { "elemental_mastery": -142, "final_damage": 32, "damage_inflicted": -12 }
+    },
+    {
+      "name": "Trauma dos",
+      "spell": "Sram/trauma",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 32 },
+      "spell_modifiers": { "bonus_base_percent": 100 }
+    },
+    {
+      "name": "Perfide dos (post-trauma, -40% armure)",
+      "spell": "Sram/perfide",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 },
+      "spell_modifiers": { "bonus_base_percent": -40 }
+    },
+    {
+      "name": "Klepto dos (post-trauma)",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 }
+    },
+    {
+      "name": "Lumiere dos (post-trauma)",
+      "spell": "Commun/lumiere",
+      "orientation": "back"
+    },
+    {
+      "name": "Perfide dos (post-trauma, -40% armure)",
+      "spell": "Sram/perfide",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 },
+      "spell_modifiers": { "bonus_base_percent": -40 }
+    },
+    {
+      "name": "Klepto dos (post-trauma)",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 }
+    },
+    {
+      "name": "Lumiere dos (post-trauma)",
+      "spell": "Commun/lumiere",
+      "orientation": "back"
+    },
+    {
+      "name": "Klepto dos (post-trauma)",
+      "spell": "Sram/klepto",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 }
+    },
+    {
+      "name": "Saignee face (post-trauma, -12 DI)",
+      "spell": "Sram/saignee",
+      "orientation": "back",
+      "caster_modifiers": { "final_damage": 40 }
+    }
+  ]
+}
