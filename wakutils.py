@@ -2,13 +2,11 @@
 import os
 import json
 import settings
+from paths import resource_path
 
 def parse():
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    version = settings.DATA_VERSION
-    data_dir = os.path.join(current_dir, "data", version)
+    data_dir = resource_path("data", settings.DATA_VERSION)
 
     itemPropertiesFile = open(os.path.join(data_dir, "itemProperties.json"), encoding="utf-8")
     itemPropertiesData = json.load(itemPropertiesFile)
@@ -111,8 +109,7 @@ def load_item_pairings():
     Wakfu data-version bump) are dropped with a warning so the solver
     stays feasible.
     """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "data_overrides", "item_pairings.json")
+    path = resource_path("data_overrides", "item_pairings.json")
     if not os.path.exists(path):
         settings.ITEM_PAIRINGS = []
         return

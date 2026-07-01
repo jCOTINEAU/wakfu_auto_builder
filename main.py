@@ -1,6 +1,7 @@
 import os
 import settings
 from wakutils import setupJson
+from paths import resource_path
 
 # UI zoom. Set QT_SCALE_FACTOR via environment to override at runtime
 # (e.g. `QT_SCALE_FACTOR=1.5 python main.py`), otherwise falls back to
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     setupJson()
 
     engine.rootContext().setContextProperty("dataVersion", settings.DATA_VERSION)
-    engine.load("views/mainPage.qml")
+    engine.load(resource_path("views", "mainPage.qml"))
     sys.exit(app.exec())
 
 

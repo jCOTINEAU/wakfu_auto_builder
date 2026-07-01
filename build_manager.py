@@ -6,8 +6,18 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from paths import user_data_file, migrate_legacy_file
 
-DEFAULT_SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_builds.json")
+
+DEFAULT_SAVE_PATH = user_data_file("saved_builds.json")
+
+# One-shot migration: if a saved_builds.json exists next to the source (dev
+# / pre-packaging layout) and none in the user dir yet, copy it over. Kept
+# outside a function so it runs once at import time.
+migrate_legacy_file(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_builds.json"),
+    DEFAULT_SAVE_PATH,
+)
 
 
 def _normalize_items(items: list) -> list:

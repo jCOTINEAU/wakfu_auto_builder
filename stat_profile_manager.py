@@ -7,8 +7,16 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from paths import user_data_file, migrate_legacy_file
 
-DEFAULT_SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_stat_profiles.json")
+
+DEFAULT_SAVE_PATH = user_data_file("saved_stat_profiles.json")
+
+# One-shot migration from repo-root (see build_manager.py for details).
+migrate_legacy_file(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_stat_profiles.json"),
+    DEFAULT_SAVE_PATH,
+)
 
 DEFAULT_STATS = {
     "PV": 0,
