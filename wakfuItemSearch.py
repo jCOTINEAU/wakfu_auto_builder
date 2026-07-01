@@ -1,13 +1,14 @@
 # This Python file uses the following encoding: utf-8
 """QML-exposed item search model — used by the item filter dialog."""
 
+import json
 import unicodedata
 
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot, Signal, Property, Qt, QAbstractListModel, QModelIndex, QByteArray
 
 import settings
-from wakutils import slot_of, gfx_id_of, rarity_of
+from wakutils import SLOT_ORDER, SLOT_LABELS_FR, slot_of, gfx_id_of, rarity_of
 
 
 QML_IMPORT_NAME = "WakfuItemSearch"
@@ -128,3 +129,11 @@ class WakfuItemSearch(QAbstractListModel):
         self._total_matches = 0
         self.totalMatchesChanged.emit()
         self.endResetModel()
+
+    @Slot(result=str)
+    def slotOptionsJson(self):
+        """Return JSON [{key,label}] for a ComboBox: "any" first, then SLOT_ORDER."""
+        options = [{"key": "", "label": "Tous slots"}]
+        for slot in SLOT_ORDER:
+            options.append({"key": slot, "label": SLOT_LABELS_FR.get(slot, slot)})
+        return json.dumps(options, ensure_ascii=False)

@@ -15,6 +15,9 @@ def safeget(dct, *keys):
     return dct
 
 def getEquipEffectValue(dct,equipId,arg2=None):
+    # params[1] is a per-level scaling factor used by pets, mounts and the
+    # Makabra weapons; we assume level 50 (the max) so total = base + 50*scaling.
+    # For items that don't scale (armor, most items) params[1] is 0.
     var = safeget(dct,"definition","equipEffects",equipId,"effect","definition","params")
     if var != None:
         return var[0]+var[1]*50

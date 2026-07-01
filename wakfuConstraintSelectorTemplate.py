@@ -13,7 +13,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 @QmlElement
 class WakfuConstraintSelectorTemplate(QAbstractListModel):
 
-    wakConstraintColoreRole = Qt.UserRole + 1
+    wakConstraintColorRole = Qt.UserRole + 1
     wakConstraintMinRole = Qt.UserRole + 2
     wakConstraintMaxRole = Qt.UserRole + 3
     wakConstraintValueRole = Qt.UserRole + 4
@@ -32,7 +32,7 @@ class WakfuConstraintSelectorTemplate(QAbstractListModel):
 
     def roleNames(self):
         default = super().roleNames()
-        default[self.wakConstraintColoreRole] = QByteArray(b"customColor")
+        default[self.wakConstraintColorRole] = QByteArray(b"customColor")
         default[self.wakConstraintMinRole] = QByteArray(b"customMin")
         default[self.wakConstraintMaxRole] = QByteArray(b"customMax")
         default[self.wakConstraintValueRole] = QByteArray(b"value")
@@ -45,7 +45,7 @@ class WakfuConstraintSelectorTemplate(QAbstractListModel):
             ret = None
         elif not index.isValid():
             ret = None
-        elif role == self.wakConstraintColoreRole:
+        elif role == self.wakConstraintColorRole:
             ret = self.array[index.row()].getColor()
         elif role == self.wakConstraintMinRole:
             ret = self.array[index.row()].getMin()
@@ -68,7 +68,7 @@ class WakfuConstraintSelectorTemplate(QAbstractListModel):
             ret = False
         elif not index.isValid():
             ret = False
-        elif role == self.wakConstraintColoreRole:
+        elif role == self.wakConstraintColorRole:
             self.array[index.row()].setColor(value)
         elif role == self.wakConstraintMinRole:
             self.array[index.row()].setMin(value)
@@ -82,5 +82,5 @@ class WakfuConstraintSelectorTemplate(QAbstractListModel):
             self.array[index.row()].setText(value)
         else:
             ret = False
-        self.dataChanged.emit(0,index,role)
+        self.dataChanged.emit(index, index, [role])
         return ret

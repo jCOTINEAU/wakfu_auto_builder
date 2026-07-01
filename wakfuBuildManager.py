@@ -6,8 +6,7 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot, Signal, Qt, QAbstractListModel, QModelIndex, QByteArray, QObject
 
 import settings
-from settings import simpleActionEnum, paramsActionEnum
-from solver import getEquipEffectValue, getEquipEffectValueWithParams
+from wakutils import compute_stat_summary
 import build_manager
 
 
@@ -72,27 +71,30 @@ class WakfuBuildManager(QAbstractListModel):
         self._builds = build_manager.list_builds()
         self.endResetModel()
 
+    def _parse_save_args(self, constraints_json, excluded_json, forced_json):
+        """Parse the 3 JSON payloads and gather the current items + stats.
+
+        Returns (items, constraints, excluded, forced, stats).
+        Malformed JSON falls back to empty defaults ({}, [], []).
+        """
+        def _load(s, fallback):
+            try:
+                return json.loads(s)
+            except (json.JSONDecodeError, ValueError, TypeError):
+                return fallback
+        return (
+            list(settings.OPTIMIZED_ITEM_LIST),
+            _load(constraints_json, {}),
+            _load(excluded_json, []),
+            _load(forced_json, []),
+            self._snapshot_stats(),
+        )
+
     @Slot(str, str, str, str, str)
     def saveCurrent(self, name, constraints_json, excluded_json, forced_json, profile_id):
         """Save the current optimization result with constraint snapshot."""
-        items = list(settings.OPTIMIZED_ITEM_LIST)
-
-        try:
-            constraints = json.loads(constraints_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            constraints = {}
-
-        try:
-            excluded = json.loads(excluded_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            excluded = []
-
-        try:
-            forced = json.loads(forced_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            forced = []
-
-        stats = self._snapshot_stats()
+        items, constraints, excluded, forced, stats = self._parse_save_args(
+            constraints_json, excluded_json, forced_json)
 
         build_manager.save_build(
             name=name,
@@ -112,7 +114,8 @@ class WakfuBuildManager(QAbstractListModel):
         build = build_manager.get_build(build_id)
         if build is None:
             return
-        settings.OPTIMIZED_ITEM_LIST = build.get("items", [])
+        # Copy to detach from the build dict returned by _load_file.
+        settings.OPTIMIZED_ITEM_LIST = list(build.get("items", []))
 
         constraints_json = json.dumps(build.get("constraints", {}))
         self._last_loaded_excluded = build.get("excluded_items", [])
@@ -138,24 +141,8 @@ class WakfuBuildManager(QAbstractListModel):
     @Slot(str, str, str, str, str)
     def overwriteCurrent(self, build_id, constraints_json, excluded_json, forced_json, profile_id):
         """Overwrite an existing build with the current optimization result."""
-        items = list(settings.OPTIMIZED_ITEM_LIST)
-
-        try:
-            constraints = json.loads(constraints_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            constraints = {}
-
-        try:
-            excluded = json.loads(excluded_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            excluded = []
-
-        try:
-            forced = json.loads(forced_json)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            forced = []
-
-        stats = self._snapshot_stats()
+        items, constraints, excluded, forced, stats = self._parse_save_args(
+            constraints_json, excluded_json, forced_json)
 
         build_manager.overwrite_build(
             build_id=build_id,
@@ -199,39 +186,4 @@ class WakfuBuildManager(QAbstractListModel):
 
     def _snapshot_stats(self):
         """Compute stat summary for the current optimized set."""
-        stat_list = []
-        for data in simpleActionEnum:
-            value = 0
-            for item_id in settings.OPTIMIZED_ITEM_LIST:
-                item_data = settings.ITEMS_DATA.get(item_id)
-                if item_data:
-                    value += getEquipEffectValue(item_data, data.value)
-            if value != 0:
-                desc = settings.ACTION_DATA.get(data.value, {})
-                effect_text = desc.get("definition", {}).get("effect", f"Action {data.value}")
-                stat_list.append({
-                    "effect": f"{effect_text} : {value}",
-                    "effectId": data.value,
-                    "value": value,
-                })
-
-        for data in paramsActionEnum:
-            value = 0
-            nb_elem = 0
-            for item_id in settings.OPTIMIZED_ITEM_LIST:
-                item_data = settings.ITEMS_DATA.get(item_id)
-                if item_data:
-                    temp = getEquipEffectValueWithParams(item_data, data.value)
-                    value += temp
-                    if temp != 0:
-                        nb_elem = item_data["definition"]["equipEffects"][data.value]["effect"]["definition"]["params"][2]
-            if value != 0:
-                desc = settings.ACTION_DATA.get(data.value, {})
-                effect_text = desc.get("definition", {}).get("effect", f"Action {data.value}")
-                stat_list.append({
-                    "effect": f"{effect_text} : {value} on {nb_elem} element",
-                    "effectId": data.value,
-                    "value": value,
-                })
-
-        return stat_list
+        return compute_stat_summary(settings.OPTIMIZED_ITEM_LIST)

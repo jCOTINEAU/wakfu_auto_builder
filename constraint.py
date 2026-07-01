@@ -2,7 +2,7 @@
 from typing import List
 from solver import createSimpleAddSubstractConstraint,createParamsConstraint,createLevelConstraint
 from settings import paramsActionEnum,simpleActionEnum
-import math
+from stat_profile_manager import resistance_percent_to_raw
 
 class Constraint:
 
@@ -95,8 +95,12 @@ class RarityConstraint(Constraint):
 class ResConstraint(Constraint):
     def createSolverConstraints(self,ratio=None):
 
-        target = -((self.getValue()/100)-1)
-        resNumber = math.log(target,0.8)*100
+        # UI already clamps 0..99; guard defensively here so a stale saved
+        # profile with an out-of-range value can't NaN the solver.
+        value = max(0, min(99, self.getValue()))
+        if value == 0:
+            return []
+        resNumber = resistance_percent_to_raw(value)
         base_res = self.base_value
 
         return[

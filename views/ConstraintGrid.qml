@@ -12,6 +12,19 @@ Item {
     property int forcedCount: 0
     property var excludedList: []
 
+    // Mutually-exclusive maximize modes:
+    //   elem branch (fire/water/air/earth + other-mastery) — active when any elem is on
+    //   parade/tacle branch — active when any parade/tacle toggle is on
+    // The solver picks the elem branch as soon as one elem is on, so the two
+    // sets of toggles must be mutually excluded in the UI.
+    property bool elemMaxActive: false
+    property bool otherMaxActive: false
+
+    function refreshMaximizeModes() {
+        elemMaxActive  = constraintSelectorModel.elemMasteryActiveCount()  > 0
+        otherMaxActive = constraintSelectorModel.otherMaximizeActiveCount() > 0
+    }
+
     Connections {
         target: constraintSelectorModel
         function onExcludedItemsChanged() {
@@ -23,10 +36,20 @@ Item {
         }
     }
 
+    Connections {
+        target: constraintSelectorModel.getElemMasteryMaximizeModel()
+        function onDataChanged() { constraintGridItem.refreshMaximizeModes() }
+    }
+    Connections {
+        target: constraintSelectorModel.getOtherMaximizeModel()
+        function onDataChanged() { constraintGridItem.refreshMaximizeModes() }
+    }
+
     Component.onCompleted: {
         excludedCount = constraintSelectorModel.excludedItemCount()
         forcedCount   = constraintSelectorModel.forcedItemCount()
         excludedList  = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
+        refreshMaximizeModes()
     }
 
     ItemFilterDialog { id: itemFilterDialog }
@@ -356,6 +379,9 @@ Item {
                 radius: mainPage.radius
                 border.color: mainPage.border
                 border.width: 1
+                enabled: !constraintGridItem.otherMaxActive
+                opacity: enabled ? 1.0 : 0.35
+                Behavior on opacity { NumberAnimation { duration: 150 } }
 
                 ColumnLayout {
                     id: sectionElemMastery
@@ -390,6 +416,9 @@ Item {
                 radius: mainPage.radius
                 border.color: mainPage.border
                 border.width: 1
+                enabled: !constraintGridItem.otherMaxActive
+                opacity: enabled ? 1.0 : 0.35
+                Behavior on opacity { NumberAnimation { duration: 150 } }
 
                 ColumnLayout {
                     id: sectionOtherMastery
@@ -416,7 +445,8 @@ Item {
                 }
             }
 
-            // ── Section: Other Maximize ──
+            // ── Section: Other Maximize (parade / tacle) ──
+            // Mutually exclusive with the two elem/mastery sections above.
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: sectionOther.implicitHeight + 32
@@ -424,6 +454,9 @@ Item {
                 radius: mainPage.radius
                 border.color: mainPage.border
                 border.width: 1
+                enabled: !constraintGridItem.elemMaxActive
+                opacity: enabled ? 1.0 : 0.35
+                Behavior on opacity { NumberAnimation { duration: 150 } }
 
                 ColumnLayout {
                     id: sectionOther

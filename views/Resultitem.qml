@@ -70,7 +70,7 @@ Item {
                     model: WakfuItemList {}
                     clip: true
                     spacing: 2
-                    onVisibleChanged: model.reload()
+                    onVisibleChanged: if (visible) model.reload()
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -206,7 +206,7 @@ Item {
                     model: WakfuItemStatSum {}
                     clip: true
                     spacing: 2
-                    onVisibleChanged: model.reload()
+                    onVisibleChanged: if (visible) model.reload()
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded

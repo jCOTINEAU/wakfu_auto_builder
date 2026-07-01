@@ -76,6 +76,7 @@ def isSecondaryWeapon(item):
         equipmentType = settings.EQUIPMENT_ITEM_TYPES_DATA[settings.EQUIPMENT_ITEM_TYPES_DATA[item['definition']['item']['baseParameters']['itemTypeId']]['definition']['parentId']]
         if 'SECOND_WEAPON' in equipmentType['definition']['equipmentPositions']:
             return True
+        return False
     #non weapon item have parent id 118 which does not exist
     except KeyError:
         return False
@@ -230,6 +231,59 @@ def rarity_of(item_id):
     if item is None:
         return 0
     return item["definition"]["item"]["baseParameters"].get("rarity", 0)
+
+
+def compute_stat_summary(item_ids):
+    """Aggregate equip effects across `item_ids` into a list of stat rows.
+
+    Each row: {'effect': <human string>, 'effectId': <int>, 'value': <int>}.
+    Missing item IDs (stale saved build after a data bump) are skipped.
+    """
+    # Local imports keep wakutils importable without dragging solver.py at
+    # module load time (used by low-level test helpers too).
+    from settings import simpleActionEnum, paramsActionEnum
+    from solver import getEquipEffectValue, getEquipEffectValueWithParams
+
+    rows = []
+
+    for action in simpleActionEnum:
+        value = 0
+        for iid in item_ids:
+            item = settings.ITEMS_DATA.get(iid)
+            if item:
+                value += getEquipEffectValue(item, action.value)
+        if value != 0:
+            desc = settings.ACTION_DATA.get(action.value, {})
+            effect_text = desc.get("definition", {}).get("effect",
+                                                         f"Action {action.value}")
+            rows.append({
+                "effect":   f"{effect_text} : {value}",
+                "effectId": action.value,
+                "value":    value,
+            })
+
+    for action in paramsActionEnum:
+        value = 0
+        nb_elem = 0
+        for iid in item_ids:
+            item = settings.ITEMS_DATA.get(iid)
+            if item is None:
+                continue
+            temp = getEquipEffectValueWithParams(item, action.value)
+            value += temp
+            if temp != 0:
+                nb_elem = item["definition"]["equipEffects"][action.value]["effect"]["definition"]["params"][2]
+        if value != 0:
+            desc = settings.ACTION_DATA.get(action.value, {})
+            effect_text = desc.get("definition", {}).get("effect",
+                                                         f"Action {action.value}")
+            rows.append({
+                "effect":   f"{effect_text} : {value} on {int(nb_elem)} element",
+                "effectId": action.value,
+                "value":    value,
+            })
+
+    return rows
 
 
 def name_of(item_id, lang="fr"):

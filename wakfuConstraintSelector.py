@@ -58,7 +58,7 @@ class WakfuConstraintSelector(QObject):
             Constraint('blockSelector','Parade >=',params=[simpleActionEnum.BLOCK_ADD,simpleActionEnum.BLOCK_MINUS]),
             Constraint('lockSelector','Tacle >=',params=[simpleActionEnum.LOCK_ADD,simpleActionEnum.LOCK_MINUS]),
             Constraint('dodgeSelector','Esquive >=',params=[simpleActionEnum.DODGE_ADD,simpleActionEnum.DODGE_MINUS]),
-            ResConstraint('resConstraint','Resistance >=',params=[])
+            ResConstraint('resConstraint','Resistance >=',params=[],min=0,max=99)
         ])
 
         self.maximizeElemMasteryModel = WakfuConstraintSelectorTemplate([
@@ -79,7 +79,7 @@ class WakfuConstraintSelector(QObject):
 
         self.maximizeOtherModel = WakfuConstraintSelectorTemplate([
             RatioConstraint('blockMaximizeSelector','parade',default=0,min=0,max=1,ratio=10,params=[simpleActionEnum.BLOCK_ADD,simpleActionEnum.BLOCK_MINUS]),
-            RatioConstraint('blockMaximizeSelector','tacle',default=0,min=0,max=1,ratio=1,params=[simpleActionEnum.LOCK_ADD,simpleActionEnum.LOCK_MINUS])
+            RatioConstraint('lockMaximizeSelector','tacle',default=0,min=0,max=1,ratio=1,params=[simpleActionEnum.LOCK_ADD,simpleActionEnum.LOCK_MINUS])
         ])
 
     def setStuffConstraints(self):
@@ -155,15 +155,27 @@ class WakfuConstraintSelector(QObject):
 
         constraints = self.simpleConstraintModel.getConstraints()
 
-        rarity = [
-         rarityEnum.WHITE if constraints[1].getValue() == 1 else -1,
-         rarityEnum.GREEN if constraints[2].getValue() == 1 else -1,
-         rarityEnum.ORANGE if constraints[3].getValue() == 1 else -1,
-         rarityEnum.LEGENDARY if constraints[4].getValue() == 1 else -1,
-         rarityEnum.BLUE if constraints[5].getValue() == 1 else -1,
-         rarityEnum.EPIC if constraints[6].getValue() == 1 else -1,
-         rarityEnum.RELIC if constraints[7].getValue() == 1 else -1,
-        ]
+        # Rarity toggles are matched by constraint name (not position) so a
+        # reorder / insertion elsewhere in simpleConstraintModel can't silently
+        # break the filter.
+        rarity_by_selector = {
+            "rarityCommonSelector":    rarityEnum.WHITE,
+            "rarityRareSelector":      rarityEnum.GREEN,
+            "rarityMythicalSelector":  rarityEnum.ORANGE,
+            "rarityLegendarySelector": rarityEnum.LEGENDARY,
+            "rarityMemorySelector":    rarityEnum.BLUE,
+            "rarityEpicSelector":      rarityEnum.EPIC,
+            "rarityRelicSelector":     rarityEnum.RELIC,
+        }
+        rarity = {
+            rarity_by_selector[c.getName()]
+            for c in constraints
+            if c.getName() in rarity_by_selector and c.getValue() == 1
+        }
+
+        # Find the level cap the same way.
+        level_cap = next(c.getValue() for c in constraints
+                         if c.getName() == "levelSelector")
 
         for key,item in settings.ITEMS_DATA.items():
            # remove shards from item list so far
@@ -172,7 +184,7 @@ class WakfuConstraintSelector(QObject):
 
            # Forced items bypass level / rarity / exclusion filters — user intent wins.
            if key not in self._forced_item_ids:
-               if item['definition']['item']['level'] > constraints[0].getValue() :
+               if item['definition']['item']['level'] > level_cap:
                    continue
                if item['definition']['item']['baseParameters']['rarity'] not in rarity:
                    continue
@@ -229,6 +241,28 @@ class WakfuConstraintSelector(QObject):
     @Slot(result=QAbstractItemModel)
     def getOtherMaximizeModel(self):
         return self.maximizeOtherModel
+
+    @Slot(result=int)
+    def elemMasteryActiveCount(self):
+        """Number of enabled elemental-mastery toggles (fire/water/air/earth)."""
+        return sum(1 for c in self.maximizeElemMasteryModel.getConstraints()
+                   if c.getValue() == 1)
+
+    @Slot(result=int)
+    def otherMaximizeActiveCount(self):
+        """Number of enabled parade/tacle toggles (mutually exclusive with elem)."""
+        return sum(1 for c in self.maximizeOtherModel.getConstraints()
+                   if c.getValue() == 1)
+
+    @Slot(int)
+    def selectOnlyOtherMaximize(self, index):
+        """Radio-select: enable only the given index in maximizeOtherModel,
+        turn all others off. Used by the parade/tacle chips."""
+        m = self.maximizeOtherModel
+        for i, c in enumerate(m.getConstraints()):
+            c.setValue(1 if i == index else 0)
+        m.beginResetModel()
+        m.endResetModel()
 
     @Slot(result=str)
     def exportConstraints(self):

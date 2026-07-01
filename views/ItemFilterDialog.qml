@@ -129,23 +129,8 @@ Item {
                     Layout.preferredHeight: 38
                     textRole: "label"
                     valueRole: "key"
-                    model: [
-                        { key: "",                 label: "Tous slots" },
-                        { key: "HEAD",             label: "Casque" },
-                        { key: "BACK",             label: "Cape" },
-                        { key: "SHOULDERS",        label: "Épaulettes" },
-                        { key: "RING",             label: "Anneau" },
-                        { key: "MOUNT",            label: "Monture" },
-                        { key: "PET",              label: "Familier" },
-                        { key: "EMBLEM",           label: "Emblème" },
-                        { key: "FIRST_WEAPON_1H",  label: "Arme 1M" },
-                        { key: "FIRST_WEAPON_2H",  label: "Arme 2M" },
-                        { key: "SECOND_WEAPON",    label: "Seconde main" },
-                        { key: "LEGS",             label: "Bottes" },
-                        { key: "BELT",             label: "Ceinture" },
-                        { key: "CHEST",            label: "Torse" },
-                        { key: "NECK",             label: "Amulette" }
-                    ]
+                    // Source of truth is wakutils.SLOT_LABELS_FR — Python side.
+                    model: JSON.parse(searchModel.slotOptionsJson())
                     onCurrentValueChanged: searchModel.setQuery(searchInput.text, currentValue || "")
                 }
             }
