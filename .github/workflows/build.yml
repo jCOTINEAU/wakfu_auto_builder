@@ -1,0 +1,104 @@
+name: Build
+
+on:
+  # Full release build: tag pushes v*.
+  push:
+    tags: ["v*"]
+  # Manual trigger for pipeline testing.
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  name: linux,   ext: "" }
+          - { os: macos-latest,   name: macos,   ext: ".app" }
+          - { os: windows-latest, name: windows, ext: ".exe" }
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      # Qt/PySide6 runtime deps (Ubuntu doesn't ship them by default).
+      - name: Install Linux system deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libegl1 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-xinerama0 libxcb-xkb1 libxcb-cursor0
+
+      - name: Install Python deps
+        run: pip install -r requirements-lock.txt
+
+      # Nuitka's C++ cache speeds up subsequent builds dramatically.
+      - name: Cache Nuitka
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/AppData/Local/Nuitka/Nuitka/Cache
+            ~/Library/Caches/Nuitka
+          key: nuitka-${{ matrix.os }}-${{ hashFiles('requirements-lock.txt', 'main.py', 'wakutils.py', 'paths.py') }}
+          restore-keys: |
+            nuitka-${{ matrix.os }}-
+
+      - name: Build
+        run: python build.py
+
+      # macOS: .app is a directory → must be zipped (preserving symlinks)
+      # to keep the bundle intact.
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: dist
+        run: zip -r -y WakfuAutoBuilder-macos.zip .
+
+      # Linux: single .bin, zip for consistency.
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: dist
+        run: |
+          chmod +x *.bin *.dist/* 2>/dev/null || true
+          zip -r WakfuAutoBuilder-linux.zip .
+
+      # Windows: single .exe, zip for consistency.
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: dist
+        run: Compress-Archive -Path * -DestinationPath WakfuAutoBuilder-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WakfuAutoBuilder-${{ matrix.name }}
+          path: dist/WakfuAutoBuilder-${{ matrix.name }}.zip
+          if-no-files-found: error
+
+  release:
+    # Only publish a GitHub Release when we're on an actual v* tag.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
