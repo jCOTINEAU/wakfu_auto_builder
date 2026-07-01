@@ -9,6 +9,7 @@ Item {
     id: constraintGridItem
 
     property int excludedCount: 0
+    property int forcedCount: 0
     property var excludedList: []
 
     Connections {
@@ -17,12 +18,18 @@ Item {
             constraintGridItem.excludedCount = constraintSelectorModel.excludedItemCount()
             constraintGridItem.excludedList = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
         }
+        function onForcedItemsChanged() {
+            constraintGridItem.forcedCount = constraintSelectorModel.forcedItemCount()
+        }
     }
 
     Component.onCompleted: {
         excludedCount = constraintSelectorModel.excludedItemCount()
-        excludedList = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
+        forcedCount   = constraintSelectorModel.forcedItemCount()
+        excludedList  = JSON.parse(constraintSelectorModel.getExcludedItemsJson())
     }
+
+    ItemFilterDialog { id: itemFilterDialog }
 
     WakfuStatProfileManager {
         id: profileSelectorModel
@@ -161,6 +168,73 @@ Item {
                             font.italic: true
                         }
                     }
+                }
+            }
+
+            // ── Item filter shortcut (opens the search dialog) ──
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 52
+                color: itemFilterBtnMouse.containsMouse ? Qt.lighter(mainPage.bgCard, 1.3) : mainPage.bgCard
+                radius: mainPage.radius
+                border.color: mainPage.accent
+                border.width: 1
+
+                Behavior on color { ColorAnimation { duration: 100 } }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    spacing: 12
+
+                    Text {
+                        text: "🎯"
+                        color: mainPage.accent
+                        font.pixelSize: 18
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Filtres d'objets"
+                        color: mainPage.accent
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: constraintGridItem.forcedCount + " forcé(s)"
+                        color: constraintGridItem.forcedCount > 0 ? "#6eb5ff" : mainPage.textMuted
+                        font.pixelSize: 12
+                        font.bold: constraintGridItem.forcedCount > 0
+                    }
+
+                    Text {
+                        text: "·"
+                        color: mainPage.textMuted
+                    }
+
+                    Text {
+                        text: constraintGridItem.excludedCount + " banni(s)"
+                        color: constraintGridItem.excludedCount > 0 ? mainPage.negative : mainPage.textMuted
+                        font.pixelSize: 12
+                        font.bold: constraintGridItem.excludedCount > 0
+                    }
+
+                    Text {
+                        text: "›"
+                        color: mainPage.accent
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
+                }
+
+                MouseArea {
+                    id: itemFilterBtnMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: itemFilterDialog.open()
                 }
             }
 

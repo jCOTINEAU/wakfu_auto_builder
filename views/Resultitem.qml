@@ -473,13 +473,14 @@ Item {
                         onClicked: {
                             var cJson = constraintSelectorModel.exportConstraints()
                             var exJson = constraintSelectorModel.getExcludedItemsJson()
+                            var fcJson = constraintSelectorModel.getForcedItemsJson()
                             var profId = constraintSelectorModel.getActiveProfileId()
                             if (overwriteSelector.currentIndex === 0) {
-                                buildManager.saveCurrent(saveNameInput.text, cJson, exJson, profId)
+                                buildManager.saveCurrent(saveNameInput.text, cJson, exJson, fcJson, profId)
                             } else {
                                 var buildIdx = overwriteSelector.currentIndex - 1
                                 var bid = buildManager.buildIdAt(buildIdx)
-                                buildManager.overwriteCurrent(bid, cJson, exJson, profId)
+                                buildManager.overwriteCurrent(bid, cJson, exJson, fcJson, profId)
                             }
                             saveNameInput.text = ""
                             overwriteSelector.currentIndex = 0

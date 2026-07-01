@@ -26,12 +26,14 @@ QML_IMPORT_MAJOR_VERSION = 1
 class WakfuConstraintSelector(QObject):
 
     excludedItemsChanged = Signal()
+    forcedItemsChanged = Signal()
 
     def __init__(self,parent=None):
         super().__init__(parent=parent)
         self.constraintValueFromUi = {}
         self._active_profile_id = ""
         self._excluded_item_ids = set()
+        self._forced_item_ids = set()
 
         self.simpleConstraintModel = WakfuConstraintSelectorTemplate([
             LevelConstraint('levelSelector','Level <=',params=[],default=230,min=1,max=999),
@@ -137,6 +139,12 @@ class WakfuConstraintSelector(QObject):
             for iid in present[1:]:
                 self.stuffConstraints.append(settings.VARIABLES[iid] == anchor)
 
+        # Forced items: V[id] == 1. Forced ids always end up in VARIABLES
+        # (filters bypassed above), but guard defensively.
+        for iid in self._forced_item_ids:
+            if iid in settings.VARIABLES:
+                self.stuffConstraints.append(settings.VARIABLES[iid] == 1)
+
     def initSolver(self):
 
         self.stuffConstraints = []
@@ -161,14 +169,15 @@ class WakfuConstraintSelector(QObject):
            # remove shards from item list so far
            if item['definition']['item'].get('shardsParameters',0) != 0:
                continue
-           if item['definition']['item']['level'] > constraints[0].getValue() :
-               continue
 
-           if item['definition']['item']['baseParameters']['rarity'] not in rarity:
-               continue
-
-           if key in self._excluded_item_ids:
-               continue
+           # Forced items bypass level / rarity / exclusion filters — user intent wins.
+           if key not in self._forced_item_ids:
+               if item['definition']['item']['level'] > constraints[0].getValue() :
+                   continue
+               if item['definition']['item']['baseParameters']['rarity'] not in rarity:
+                   continue
+               if key in self._excluded_item_ids:
+                   continue
 
            settings.VARIABLES[key]=self.solver.BoolVar(item['title']['fr']+str(item['definition']['item']['id']))
 
@@ -294,6 +303,47 @@ class WakfuConstraintSelector(QObject):
         except (json.JSONDecodeError, ValueError, TypeError):
             self._excluded_item_ids = set()
         self.excludedItemsChanged.emit()
+
+    # ── Forced items (must be picked, bypass level/rarity filters) ──
+
+    @Slot(int)
+    def addForcedItem(self, item_id):
+        self._forced_item_ids.add(item_id)
+        # Forcing wins over excluding: keep the two sets disjoint.
+        self._excluded_item_ids.discard(item_id)
+        self.forcedItemsChanged.emit()
+        self.excludedItemsChanged.emit()
+
+    @Slot(int)
+    def removeForcedItem(self, item_id):
+        self._forced_item_ids.discard(item_id)
+        self.forcedItemsChanged.emit()
+
+    @Slot()
+    def clearForcedItems(self):
+        self._forced_item_ids.clear()
+        self.forcedItemsChanged.emit()
+
+    @Slot(int, result=bool)
+    def isItemForced(self, item_id):
+        return item_id in self._forced_item_ids
+
+    @Slot(result=int)
+    def forcedItemCount(self):
+        return len(self._forced_item_ids)
+
+    @Slot(result=str)
+    def getForcedItemsJson(self):
+        return json.dumps(list(self._forced_item_ids))
+
+    @Slot(str)
+    def setForcedItemsFromJson(self, json_str):
+        try:
+            ids = json.loads(json_str)
+            self._forced_item_ids = set(ids)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            self._forced_item_ids = set()
+        self.forcedItemsChanged.emit()
 
     @Slot(int, result=str)
     def getItemName(self, item_id):

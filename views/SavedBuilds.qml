@@ -13,6 +13,8 @@ Item {
             constraintSelectorModel.importConstraints(constraintsJson)
             var excludedJson = savedBuildModel.getLastLoadedExcludedJson()
             constraintSelectorModel.setExcludedItemsFromJson(excludedJson)
+            var forcedJson = savedBuildModel.getLastLoadedForcedJson()
+            constraintSelectorModel.setForcedItemsFromJson(forcedJson)
             var profileId = savedBuildModel.getLastLoadedProfileId()
             if (profileId) {
                 constraintSelectorModel.setActiveProfile(profileId)

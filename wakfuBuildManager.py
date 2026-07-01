@@ -32,6 +32,7 @@ class WakfuBuildManager(QAbstractListModel):
         super().__init__(parent=parent)
         self._builds = build_manager.list_builds()
         self._last_loaded_excluded = []
+        self._last_loaded_forced = []
         self._last_loaded_profile_id = ""
 
     # ── QAbstractListModel interface ──
@@ -71,8 +72,8 @@ class WakfuBuildManager(QAbstractListModel):
         self._builds = build_manager.list_builds()
         self.endResetModel()
 
-    @Slot(str, str, str, str)
-    def saveCurrent(self, name, constraints_json, excluded_json, profile_id):
+    @Slot(str, str, str, str, str)
+    def saveCurrent(self, name, constraints_json, excluded_json, forced_json, profile_id):
         """Save the current optimization result with constraint snapshot."""
         items = list(settings.OPTIMIZED_ITEM_LIST)
 
@@ -86,6 +87,11 @@ class WakfuBuildManager(QAbstractListModel):
         except (json.JSONDecodeError, ValueError, TypeError):
             excluded = []
 
+        try:
+            forced = json.loads(forced_json)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            forced = []
+
         stats = self._snapshot_stats()
 
         build_manager.save_build(
@@ -94,6 +100,7 @@ class WakfuBuildManager(QAbstractListModel):
             constraints=constraints,
             stats=stats,
             excluded_items=excluded,
+            forced_items=forced,
             profile_id=profile_id,
         )
         self.reload()
@@ -109,6 +116,7 @@ class WakfuBuildManager(QAbstractListModel):
 
         constraints_json = json.dumps(build.get("constraints", {}))
         self._last_loaded_excluded = build.get("excluded_items", [])
+        self._last_loaded_forced = build.get("forced_items", [])
         self._last_loaded_profile_id = build.get("profile_id", "")
         self.loadSuccess.emit(constraints_json)
 
@@ -118,12 +126,17 @@ class WakfuBuildManager(QAbstractListModel):
         return json.dumps(self._last_loaded_excluded)
 
     @Slot(result=str)
+    def getLastLoadedForcedJson(self):
+        """Return forced items from the last loaded build as JSON."""
+        return json.dumps(self._last_loaded_forced)
+
+    @Slot(result=str)
     def getLastLoadedProfileId(self):
         """Return the profile ID from the last loaded build."""
         return self._last_loaded_profile_id
 
-    @Slot(str, str, str, str)
-    def overwriteCurrent(self, build_id, constraints_json, excluded_json, profile_id):
+    @Slot(str, str, str, str, str)
+    def overwriteCurrent(self, build_id, constraints_json, excluded_json, forced_json, profile_id):
         """Overwrite an existing build with the current optimization result."""
         items = list(settings.OPTIMIZED_ITEM_LIST)
 
@@ -137,6 +150,11 @@ class WakfuBuildManager(QAbstractListModel):
         except (json.JSONDecodeError, ValueError, TypeError):
             excluded = []
 
+        try:
+            forced = json.loads(forced_json)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            forced = []
+
         stats = self._snapshot_stats()
 
         build_manager.overwrite_build(
@@ -145,6 +163,7 @@ class WakfuBuildManager(QAbstractListModel):
             constraints=constraints,
             stats=stats,
             excluded_items=excluded,
+            forced_items=forced,
             profile_id=profile_id,
         )
         self.reload()

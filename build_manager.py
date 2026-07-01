@@ -51,6 +51,7 @@ def save_build(
     constraints: Optional[dict] = None,
     stats: Optional[list] = None,
     excluded_items: Optional[list] = None,
+    forced_items: Optional[list] = None,
     profile_id: str = "",
     path: str = DEFAULT_SAVE_PATH,
 ) -> dict:
@@ -88,6 +89,7 @@ def save_build(
         "constraints": constraints or {},
         "stats": stats or [],
         "excluded_items": excluded_items or [],
+        "forced_items": forced_items or [],
         "profile_id": profile_id,
     }
 
@@ -128,6 +130,7 @@ def overwrite_build(
     constraints: Optional[dict] = None,
     stats: Optional[list] = None,
     excluded_items: Optional[list] = None,
+    forced_items: Optional[list] = None,
     profile_id: str = "",
     path: str = DEFAULT_SAVE_PATH,
 ) -> Optional[dict]:
@@ -162,6 +165,7 @@ def overwrite_build(
             build["constraints"] = constraints or {}
             build["stats"] = stats or []
             build["excluded_items"] = excluded_items or []
+            build["forced_items"] = forced_items or []
             build["profile_id"] = profile_id
             build["created_at"] = datetime.now().isoformat()
             _write_file(path, builds)
