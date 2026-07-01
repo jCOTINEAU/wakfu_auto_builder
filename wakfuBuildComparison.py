@@ -5,6 +5,14 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot, Signal, Property, Qt, QAbstractListModel, QModelIndex, QByteArray, QObject
 
 import build_manager
+from wakutils import (
+    SLOT_ORDER,
+    SLOT_LABELS_FR,
+    slot_of,
+    name_of,
+    gfx_id_of,
+    rarity_of,
+)
 
 
 QML_IMPORT_NAME = "WakfuBuildComparison"
@@ -20,7 +28,7 @@ class WakfuBuildComparison(QObject):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._stat_model = ComparisonStatModel(self)
-        self._item_diff_model = ComparisonItemDiffModel(self)
+        self._slot_row_model = ComparisonSlotRowModel(self)
         self._name_a = ""
         self._name_b = ""
 
@@ -42,8 +50,8 @@ class WakfuBuildComparison(QObject):
         return self._stat_model
 
     @Slot(result=QObject)
-    def itemDiffModel(self):
-        return self._item_diff_model
+    def itemSlotModel(self):
+        return self._slot_row_model
 
     @Slot(str, str)
     def compareByIds(self, id_a, id_b):
@@ -60,11 +68,7 @@ class WakfuBuildComparison(QObject):
         self.nameBChanged.emit()
 
         self._stat_model.setData(result["stat_deltas"])
-        self._item_diff_model.setData(
-            result["items_added"],
-            result["items_removed"],
-            result["items_common"],
-        )
+        self._slot_row_model.setData(build_a["items"], build_b["items"])
         self.comparisonReady.emit()
 
 
@@ -115,25 +119,72 @@ class ComparisonStatModel(QAbstractListModel):
         return None
 
 
-class ComparisonItemDiffModel(QAbstractListModel):
-    """List model for item differences: added (+), removed (-), common (=)."""
+def _pair_slot(items_a_slot, items_b_slot):
+    """Return list of (idA, idB, status) tuples for a single slot bucket.
 
-    itemNameRole = Qt.UserRole + 1
-    diffTypeRole = Qt.UserRole + 2
+    Matches identical items first (marks them 'equal'); pairs the rest
+    positionally as 'diff', or 'onlyA' / 'onlyB' when one side has no
+    counterpart.
+    """
+    common = set(items_a_slot) & set(items_b_slot)
+    rows = []
+    for iid in items_a_slot:
+        if iid in common:
+            rows.append((iid, iid, "equal"))
+    a_left = [i for i in items_a_slot if i not in common]
+    b_left = [i for i in items_b_slot if i not in common]
+    for i in range(max(len(a_left), len(b_left))):
+        a_id = a_left[i] if i < len(a_left) else None
+        b_id = b_left[i] if i < len(b_left) else None
+        if a_id is not None and b_id is not None:
+            rows.append((a_id, b_id, "diff"))
+        elif a_id is not None:
+            rows.append((a_id, None, "onlyA"))
+        else:
+            rows.append((None, b_id, "onlyB"))
+    return rows
+
+
+class ComparisonSlotRowModel(QAbstractListModel):
+    """One row per equipment slot, showing item A and item B side-by-side."""
+
+    slotRole       = Qt.UserRole + 1
+    slotLabelRole  = Qt.UserRole + 2
+    itemAIdRole    = Qt.UserRole + 3
+    itemANameRole  = Qt.UserRole + 4
+    itemAGfxRole   = Qt.UserRole + 5
+    itemARarRole   = Qt.UserRole + 6
+    itemBIdRole    = Qt.UserRole + 7
+    itemBNameRole  = Qt.UserRole + 8
+    itemBGfxRole   = Qt.UserRole + 9
+    itemBRarRole   = Qt.UserRole + 10
+    statusRole     = Qt.UserRole + 11
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._rows = []
 
-    def setData(self, added, removed, common):
+    def setData(self, items_a, items_b):
         self.beginResetModel()
         self._rows = []
-        for item in removed:
-            self._rows.append({"name": item["name"], "type": "removed"})
-        for item in added:
-            self._rows.append({"name": item["name"], "type": "added"})
-        for item in common:
-            self._rows.append({"name": item["name"], "type": "common"})
+        for slot in SLOT_ORDER:
+            in_a = [i for i in items_a if slot_of(i) == slot]
+            in_b = [i for i in items_b if slot_of(i) == slot]
+            pairs = _pair_slot(in_a, in_b)
+            for i, (a_id, b_id, status) in enumerate(pairs):
+                label = SLOT_LABELS_FR.get(slot, slot)
+                if len(pairs) > 1:
+                    label = f"{label} {i + 1}"
+                self._rows.append({
+                    "slot": slot,
+                    "slotLabel": label,
+                    "a_id": a_id,
+                    "b_id": b_id,
+                    "status": status,
+                })
+        # Differences first, then equal rows. Stable sort preserves slot order
+        # within each group.
+        self._rows.sort(key=lambda r: 1 if r["status"] == "equal" else 0)
         self.endResetModel()
 
     def rowCount(self, parent=QModelIndex()):
@@ -141,16 +192,34 @@ class ComparisonItemDiffModel(QAbstractListModel):
 
     def roleNames(self):
         default = super().roleNames()
-        default[self.itemNameRole] = QByteArray(b"itemName")
-        default[self.diffTypeRole] = QByteArray(b"diffType")
+        default[self.slotRole]      = QByteArray(b"slot")
+        default[self.slotLabelRole] = QByteArray(b"slotLabel")
+        default[self.itemAIdRole]   = QByteArray(b"itemAId")
+        default[self.itemANameRole] = QByteArray(b"itemAName")
+        default[self.itemAGfxRole]  = QByteArray(b"itemAGfxId")
+        default[self.itemARarRole]  = QByteArray(b"itemARarity")
+        default[self.itemBIdRole]   = QByteArray(b"itemBId")
+        default[self.itemBNameRole] = QByteArray(b"itemBName")
+        default[self.itemBGfxRole]  = QByteArray(b"itemBGfxId")
+        default[self.itemBRarRole]  = QByteArray(b"itemBRarity")
+        default[self.statusRole]    = QByteArray(b"status")
         return default
 
     def data(self, index, role: int):
         if not self._rows or not index.isValid():
             return None
         row = self._rows[index.row()]
-        if role == self.itemNameRole:
-            return row.get("name", "")
-        if role == self.diffTypeRole:
-            return row.get("type", "")
+        if role == self.slotRole:      return row["slot"]
+        if role == self.slotLabelRole: return row["slotLabel"]
+        if role == self.statusRole:    return row["status"]
+        # Fields for side A
+        if role == self.itemAIdRole:   return row["a_id"] or 0
+        if role == self.itemANameRole: return name_of(row["a_id"]) if row["a_id"] else ""
+        if role == self.itemAGfxRole:  return gfx_id_of(row["a_id"]) or 0 if row["a_id"] else 0
+        if role == self.itemARarRole:  return rarity_of(row["a_id"]) if row["a_id"] else 0
+        # Fields for side B
+        if role == self.itemBIdRole:   return row["b_id"] or 0
+        if role == self.itemBNameRole: return name_of(row["b_id"]) if row["b_id"] else ""
+        if role == self.itemBGfxRole:  return gfx_id_of(row["b_id"]) or 0 if row["b_id"] else 0
+        if role == self.itemBRarRole:  return rarity_of(row["b_id"]) if row["b_id"] else 0
         return None

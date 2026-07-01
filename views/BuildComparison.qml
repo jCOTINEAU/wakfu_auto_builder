@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import WakfuBuildComparison
+import WakfuItemDetail
 
 Item {
     anchors.fill: parent
@@ -229,7 +230,7 @@ Item {
             }
         }
 
-        // ── Item Differences ──
+        // ── Item Differences (per-slot table) ──
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -242,10 +243,10 @@ Item {
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 12
-                spacing: 8
+                spacing: 6
 
                 Text {
-                    text: "Différences d'équipement"
+                    text: "Équipement par slot"
                     color: mainPage.accent
                     font.pixelSize: 15
                     font.bold: true
@@ -257,78 +258,297 @@ Item {
                     color: mainPage.border
                 }
 
+                // Column headers — same geometry as the delegate rows.
+                Item {
+                    Layout.fillWidth: true
+                    height: 20
+
+                    // Same computation as the ListView (kept in sync manually).
+                    property real gap: 8
+                    property real innerW: width - 14
+                    property real slotColW: 150
+                    property real statusColW: 32
+                    property real cellW: Math.max(80,
+                        (innerW - slotColW - statusColW - gap * 4 - 4) / 2)
+
+                    Item {
+                        id: hdrSlotCol
+                        x: gap + 6 + 4     // align with delegate: 4px stripe reserved
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.slotColW
+                        height: parent.height
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Slot"
+                            color: mainPage.textMuted
+                            font.pixelSize: 11
+                        }
+                    }
+                    Text {
+                        x: hdrSlotCol.x + hdrSlotCol.width + parent.gap + 38   // + icon column offset
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: comparisonModel.nameA
+                        color: "#6eb5ff"
+                        font.pixelSize: 12
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        x: hdrSlotCol.x + hdrSlotCol.width + parent.gap + parent.cellW + parent.gap + 38
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: comparisonModel.nameB
+                        color: "#ffb86e"
+                        font.pixelSize: 12
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+                }
+
                 ListView {
-                    id: itemDiffListView
+                    id: itemSlotListView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: comparisonModel.itemDiffModel()
+                    model: comparisonModel.itemSlotModel()
                     clip: true
-                    spacing: 2
+                    spacing: 4
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
                     }
 
+                    // Shared column geometry — computed once per row.
+                    property real rowInner: width - 14   // reserve scrollbar space
+                    property real gap: 8
+                    property real slotColW: 150
+                    property real statusColW: 32
+                    property real cellW: Math.max(80,
+                        (rowInner - slotColW - statusColW - gap * 4 - 4) / 2)
+
                     delegate: Rectangle {
-                        width: itemDiffListView.width
-                        height: 30
-                        radius: 4
+                        width: itemSlotListView.rowInner
+                        height: 44
+                        radius: 5
                         color: {
-                            if (diffType === "added") return Qt.rgba(0.30, 0.69, 0.50, 0.12)
-                            if (diffType === "removed") return Qt.rgba(0.88, 0.33, 0.33, 0.12)
+                            if (status === "onlyA") return Qt.rgba(0.88, 0.33, 0.33, 0.06)
+                            if (status === "onlyB") return Qt.rgba(0.30, 0.69, 0.50, 0.06)
+                            if (status === "diff")  return Qt.rgba(0.89, 0.72, 0.08, 0.04)
                             return "transparent"
                         }
 
-                        Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-                            spacing: 8
+                        // Left status stripe (thin colored bar) — the primary visual cue.
+                        Rectangle {
+                            width: 4
+                            height: parent.height - 8
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: 2
+                            color: status === "onlyA" ? mainPage.negative
+                                : status === "onlyB" ? mainPage.positive
+                                : status === "diff"  ? mainPage.accent
+                                : Qt.rgba(1, 1, 1, 0.08)
+                        }
 
-                            Text {
+                        // ── Slot column (icon + label) ──
+                        Item {
+                            id: slotCol
+                            anchors.left: parent.left
+                            anchors.leftMargin: itemSlotListView.gap + 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: itemSlotListView.slotColW
+                            height: parent.height
+
+                            Image {
+                                id: slotIcon
+                                anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 16
-                                text: {
-                                    if (diffType === "added") return "+"
-                                    if (diffType === "removed") return "−"
-                                    return "="
-                                }
-                                color: {
-                                    if (diffType === "added") return mainPage.positive
-                                    if (diffType === "removed") return mainPage.negative
-                                    return mainPage.textMuted
-                                }
-                                font.pixelSize: 16
-                                font.bold: true
+                                width: 20; height: 20
+                                fillMode: Image.PreserveAspectFit
+                                sourceSize.width: 40; sourceSize.height: 40
+                                asynchronous: true
+                                source: slot && slot !== "OTHER"
+                                    ? "../assets/slots/" + slot + ".svg"
+                                    : ""
+                                opacity: 0.75
                             }
-
                             Text {
+                                anchors.left: slotIcon.right
+                                anchors.leftMargin: 8
+                                anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 16 - 8 - diffLabel.width - 8
-                                text: itemName
-                                color: {
-                                    if (diffType === "added") return mainPage.positive
-                                    if (diffType === "removed") return mainPage.negative
-                                    return mainPage.textMuted
-                                }
+                                text: slotLabel
+                                color: mainPage.textMuted
+                                font.pixelSize: 13
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        // ── Item A cell ──
+                        Item {
+                            id: cellA
+                            anchors.left: slotCol.right
+                            anchors.leftMargin: itemSlotListView.gap
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: itemSlotListView.cellW
+                            height: parent.height
+
+                            ItemIcon {
+                                id: cellAIcon
+                                width: 30; height: 30
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                gfxId: itemAGfxId
+                                rarity: itemARarity
+                                iconSize: 24
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 38   // 30 icon + 8 gap (always reserved for alignment)
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: itemAName !== "" ? itemAName : "—"
+                                color: itemAName !== ""
+                                    ? (status === "onlyA" || status === "diff" ? "#6eb5ff" : mainPage.textLight)
+                                    : mainPage.textMuted
                                 font.pixelSize: 13
                                 elide: Text.ElideRight
                             }
 
-                            Text {
-                                id: diffLabel
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: {
-                                    if (diffType === "added") return comparisonModel.nameB + " uniquement"
-                                    if (diffType === "removed") return comparisonModel.nameA + " uniquement"
-                                    return "commun"
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                                onEntered: {
+                                    if (itemAId > 0) {
+                                        cmpDetailPopup.itemDetailModel.setItemId(itemAId)
+                                        cmpDetailPopup.visible = true
+                                        var g = mapToItem(comparisonPage, 0, 0)
+                                        cmpDetailPopup.x = Math.min(g.x + width + 8,
+                                            comparisonPage.width - cmpDetailPopup.width - 12)
+                                        cmpDetailPopup.y = Math.min(g.y,
+                                            comparisonPage.height - cmpDetailPopup.height - 20)
+                                    }
                                 }
-                                color: mainPage.textMuted
-                                font.pixelSize: 11
-                                opacity: 0.7
+                                onExited: cmpDetailPopup.visible = false
                             }
                         }
+
+                        // ── Item B cell ──
+                        Item {
+                            id: cellB
+                            anchors.left: cellA.right
+                            anchors.leftMargin: itemSlotListView.gap
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: itemSlotListView.cellW
+                            height: parent.height
+
+                            ItemIcon {
+                                id: cellBIcon
+                                width: 30; height: 30
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                gfxId: itemBGfxId
+                                rarity: itemBRarity
+                                iconSize: 24
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 38
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: itemBName !== "" ? itemBName : "—"
+                                color: itemBName !== ""
+                                    ? (status === "onlyB" || status === "diff" ? "#ffb86e" : mainPage.textLight)
+                                    : mainPage.textMuted
+                                font.pixelSize: 13
+                                elide: Text.ElideRight
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                                onEntered: {
+                                    if (itemBId > 0) {
+                                        cmpDetailPopup.itemDetailModel.setItemId(itemBId)
+                                        cmpDetailPopup.visible = true
+                                        var g = mapToItem(comparisonPage, 0, 0)
+                                        cmpDetailPopup.x = Math.min(g.x + width + 8,
+                                            comparisonPage.width - cmpDetailPopup.width - 12)
+                                        cmpDetailPopup.y = Math.min(g.y,
+                                            comparisonPage.height - cmpDetailPopup.height - 20)
+                                    }
+                                }
+                                onExited: cmpDetailPopup.visible = false
+                            }
+                        }
+
+                        // ── Status badge ──
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: itemSlotListView.gap
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: itemSlotListView.statusColW
+                            horizontalAlignment: Text.AlignHCenter
+                            text: status === "equal" ? "="
+                                : status === "diff"  ? "≠"
+                                : status === "onlyA" ? "◀"
+                                : status === "onlyB" ? "▶"
+                                : ""
+                            color: status === "equal" ? mainPage.textMuted
+                                : status === "diff"  ? mainPage.accent
+                                : status === "onlyA" ? mainPage.negative
+                                : status === "onlyB" ? mainPage.positive
+                                : "transparent"
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
                     }
+                }
+            }
+        }
+    }
+
+    // ── Detail popup (floating card on hover — shared by both cells) ──
+    Rectangle {
+        id: cmpDetailPopup
+        visible: false
+        width: 320
+        height: Math.max(100, Math.min(cmpDetailList.contentHeight + 72,
+                                       comparisonPage.height * 0.6))
+        color: mainPage.bgCard
+        radius: mainPage.radius
+        border.color: mainPage.accent
+        border.width: 1
+        z: 100
+
+        property alias itemDetailModel: cmpDetailList.model
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+
+            Text {
+                text: "Détails"
+                color: mainPage.accent
+                font.pixelSize: 14
+                font.bold: true
+            }
+
+            ListView {
+                id: cmpDetailList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                model: WakfuItemDetail {}
+                clip: true
+                spacing: 2
+
+                delegate: Text {
+                    width: cmpDetailList.width
+                    text: effect
+                    color: mainPage.textLight
+                    font.pixelSize: 12
+                    wrapMode: Text.WordWrap
                 }
             }
         }

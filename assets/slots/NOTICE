@@ -1,0 +1,23 @@
+Slot icons in this directory come from https://game-icons.net
+and are licensed under Creative Commons Attribution 3.0 (CC BY 3.0):
+https://creativecommons.org/licenses/by/3.0/
+
+Attribution — source file → author (game-icons.net):
+
+  HEAD.svg            Lorc            (visored-helm)
+  BACK.svg            Delapouite      (cape)
+  SHOULDERS.svg       Skoll           (pauldrons)
+  RING.svg            Delapouite      (diamond-ring)
+  MOUNT.svg           Delapouite      (horse-head)
+  PET.svg             Lorc            (paw)
+  EMBLEM.svg          Lorc            (hawk-emblem)
+  FIRST_WEAPON_1H.svg Lorc            (broadsword)
+  FIRST_WEAPON_2H.svg Lorc            (crossed-swords)
+  SECOND_WEAPON.svg   Lorc            (edged-shield)
+  LEGS.svg            Lorc            (boots)
+  BELT.svg            Delapouite      (belt-armor)
+  CHEST.svg           Delapouite      (chest-armor)
+  NECK.svg            Lorc            (gem-necklace)
+
+Icons were recolored to solid white (ffffff) via the game-icons.net URL
+palette; no other modifications were made.

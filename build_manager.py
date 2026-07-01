@@ -10,6 +10,19 @@ from typing import Optional
 DEFAULT_SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_builds.json")
 
 
+def _normalize_items(items: list) -> list:
+    """Return a list of item IDs regardless of the on-disk shape.
+
+    Legacy builds stored items as ``[{"id": <int>, "name": <str>}, ...]``;
+    new builds store them as ``[<int>, ...]``. Callers always get IDs.
+    """
+    if not items:
+        return []
+    if isinstance(items[0], dict):
+        return [entry.get("id") for entry in items if "id" in entry]
+    return list(items)
+
+
 def _load_file(path: str) -> list:
     """Read the JSON save file and return a list of builds."""
     if not os.path.exists(path):
@@ -21,6 +34,8 @@ def _load_file(path: str) -> list:
             return []
     if not isinstance(data, list):
         return []
+    for build in data:
+        build["items"] = _normalize_items(build.get("items", []))
     return data
 
 
@@ -46,7 +61,7 @@ def save_build(
     name : str
         User-chosen name for the build.
     items : list
-        List of ``{"id": <int|str>, "name": <str>}`` dicts from the optimization.
+        List of item IDs from the optimization.
     constraints : dict, optional
         Snapshot of constraint values (name -> value).
     stats : list, optional
@@ -166,9 +181,9 @@ def compare_builds(build_a: dict, build_b: dict) -> dict:
     -------
     dict
         ``stat_deltas``  – list of ``{"effect": str, "effectId": int, "valueA": int, "valueB": int, "delta": int}``
-        ``items_added``  – items in B but not in A (by id)
-        ``items_removed``– items in A but not in B (by id)
-        ``items_common`` – items in both A and B (by id)
+        ``items_added``  – list of item IDs in B but not in A
+        ``items_removed``– list of item IDs in A but not in B
+        ``items_common`` – list of item IDs in both A and B
         ``name_a``, ``name_b`` – build names
     """
     stats_a = {s["effectId"]: s for s in (build_a.get("stats") or [])}
@@ -195,14 +210,12 @@ def compare_builds(build_a: dict, build_b: dict) -> dict:
             "isMalus": is_malus,
         })
 
-    ids_a = {item["id"] for item in (build_a.get("items") or [])}
-    ids_b = {item["id"] for item in (build_b.get("items") or [])}
-    items_map_a = {item["id"]: item for item in (build_a.get("items") or [])}
-    items_map_b = {item["id"]: item for item in (build_b.get("items") or [])}
+    ids_a = set(build_a.get("items") or [])
+    ids_b = set(build_b.get("items") or [])
 
-    items_added = [items_map_b[i] for i in sorted(ids_b - ids_a)]
-    items_removed = [items_map_a[i] for i in sorted(ids_a - ids_b)]
-    items_common = [items_map_a[i] for i in sorted(ids_a & ids_b)]
+    items_added = sorted(ids_b - ids_a)
+    items_removed = sorted(ids_a - ids_b)
+    items_common = sorted(ids_a & ids_b)
 
     return {
         "name_a": build_a.get("name", "Build A"),

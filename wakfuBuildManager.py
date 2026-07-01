@@ -74,9 +74,7 @@ class WakfuBuildManager(QAbstractListModel):
     @Slot(str, str, str, str)
     def saveCurrent(self, name, constraints_json, excluded_json, profile_id):
         """Save the current optimization result with constraint snapshot."""
-        items = []
-        for entry in settings.OPTIMIZED_ITEM_LIST:
-            items.append({"id": entry["id"], "name": entry["name"]})
+        items = list(settings.OPTIMIZED_ITEM_LIST)
 
         try:
             constraints = json.loads(constraints_json)
@@ -108,6 +106,7 @@ class WakfuBuildManager(QAbstractListModel):
         if build is None:
             return
         settings.OPTIMIZED_ITEM_LIST = build.get("items", [])
+
         constraints_json = json.dumps(build.get("constraints", {}))
         self._last_loaded_excluded = build.get("excluded_items", [])
         self._last_loaded_profile_id = build.get("profile_id", "")
@@ -126,9 +125,7 @@ class WakfuBuildManager(QAbstractListModel):
     @Slot(str, str, str, str)
     def overwriteCurrent(self, build_id, constraints_json, excluded_json, profile_id):
         """Overwrite an existing build with the current optimization result."""
-        items = []
-        for entry in settings.OPTIMIZED_ITEM_LIST:
-            items.append({"id": entry["id"], "name": entry["name"]})
+        items = list(settings.OPTIMIZED_ITEM_LIST)
 
         try:
             constraints = json.loads(constraints_json)
@@ -186,8 +183,8 @@ class WakfuBuildManager(QAbstractListModel):
         stat_list = []
         for data in simpleActionEnum:
             value = 0
-            for item in settings.OPTIMIZED_ITEM_LIST:
-                item_data = settings.ITEMS_DATA.get(item["id"])
+            for item_id in settings.OPTIMIZED_ITEM_LIST:
+                item_data = settings.ITEMS_DATA.get(item_id)
                 if item_data:
                     value += getEquipEffectValue(item_data, data.value)
             if value != 0:
@@ -202,8 +199,8 @@ class WakfuBuildManager(QAbstractListModel):
         for data in paramsActionEnum:
             value = 0
             nb_elem = 0
-            for item in settings.OPTIMIZED_ITEM_LIST:
-                item_data = settings.ITEMS_DATA.get(item["id"])
+            for item_id in settings.OPTIMIZED_ITEM_LIST:
+                item_data = settings.ITEMS_DATA.get(item_id)
                 if item_data:
                     temp = getEquipEffectValueWithParams(item_data, data.value)
                     value += temp

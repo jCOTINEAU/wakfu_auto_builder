@@ -86,9 +86,31 @@ Item {
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 12
+                            anchors.leftMargin: 10
                             anchors.rightMargin: 8
-                            spacing: 6
+                            spacing: 8
+
+                            Image {
+                                Layout.preferredWidth: 20
+                                Layout.preferredHeight: 20
+                                fillMode: Image.PreserveAspectFit
+                                sourceSize.width: 80
+                                sourceSize.height: 80
+                                asynchronous: true
+                                source: itemSlot && itemSlot !== "OTHER"
+                                    ? "../assets/slots/" + itemSlot + ".svg"
+                                    : ""
+                                opacity: 0.75
+                                visible: source != ""
+                            }
+
+                            ItemIcon {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                gfxId: itemGfxId || 0
+                                rarity: itemRarity
+                                iconSize: 26
+                            }
 
                             Text {
                                 Layout.fillWidth: true

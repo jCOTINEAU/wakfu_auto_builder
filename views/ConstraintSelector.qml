@@ -128,7 +128,7 @@ Rectangle {
 
                 validator: IntValidator { bottom: customMin; top: customMax }
 
-                Component.onCompleted: text = value !== 0 ? value : ''
+                Component.onCompleted: text = value !== 0 ? String(value) : ''
 
                 onTextChanged: {
                     value = text === '' ? 0 : text
@@ -150,7 +150,7 @@ Rectangle {
         }
 
         onDoubleClicked: function(mouse) {
-            localInput.text = defaultValue
+            localInput.text = String(defaultValue)
             mouse.accepted = false
         }
     }

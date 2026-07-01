@@ -1,5 +1,12 @@
+import os
 import settings
 from wakutils import setupJson
+
+# UI zoom. Set QT_SCALE_FACTOR via environment to override at runtime
+# (e.g. `QT_SCALE_FACTOR=1.5 python main.py`), otherwise falls back to
+# the value below. Applies to fonts, layouts, icons, borders — every-
+# thing goes through Qt's scaling pipeline.
+os.environ.setdefault("QT_SCALE_FACTOR", "1.3")
 
 import sys
 from PySide6.QtQml import QQmlApplicationEngine

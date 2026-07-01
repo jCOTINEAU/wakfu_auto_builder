@@ -1,0 +1,25 @@
+{
+  "_comment": "Item groups that must be equipped together (all-or-none). Not encoded in Wakfu's raw data — client-side game logic. Keep in sync with the data version in ../data/.",
+  "groups": [
+    {
+      "name": "Amakna",
+      "items": [26494, 26575],
+      "note": "Épée d'Amakna (relic) + Anneau d'Amakna (epic)"
+    },
+    {
+      "name": "Brâkmar",
+      "items": [26497, 26578],
+      "note": "Épée de Brâkmar (relic) + Anneau de Brâkmar (epic)"
+    },
+    {
+      "name": "Sufokia",
+      "items": [26495, 26576],
+      "note": "Épée de Sufokia (relic) + Anneau de Sufokia (epic)"
+    },
+    {
+      "name": "Bonta",
+      "items": [26496, 26577],
+      "note": "Épée de Bonta (relic) + Anneau de Bonta (epic)"
+    }
+  ]
+}

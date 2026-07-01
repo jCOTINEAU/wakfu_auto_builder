@@ -18,8 +18,15 @@ def initGlobal():
     global VARIABLES
     VARIABLES={}
 
+    # List of item IDs from the last solver run. Display metadata
+    # (name, slot, gfxId, …) is resolved on demand from ITEMS_DATA.
     global OPTIMIZED_ITEM_LIST
-    OPTIMIZED_ITEM_LIST = {}
+    OPTIMIZED_ITEM_LIST = []
+
+    # Groups of item IDs that must be equipped together (all-or-none).
+    # Loaded from data_overrides/item_pairings.json.
+    global ITEM_PAIRINGS
+    ITEM_PAIRINGS = []
 
 class eqTypeEnum(enum.IntEnum):
     RING = 103

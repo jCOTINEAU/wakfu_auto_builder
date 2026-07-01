@@ -49,8 +49,8 @@ class WakfuItemStatSum(QAbstractListModel):
 
         for data in simpleActionEnum:
             valueEffect = 0
-            for item in settings.OPTIMIZED_ITEM_LIST:
-                valueEffect += getEquipEffectValue(settings.ITEMS_DATA[item['id']],data.value)
+            for item_id in settings.OPTIMIZED_ITEM_LIST:
+                valueEffect += getEquipEffectValue(settings.ITEMS_DATA[item_id],data.value)
             if valueEffect != 0 :
                 description=settings.ACTION_DATA[data.value]['definition']['effect']
                 self.itemStatSumList.append({'effect': description +' : '+ str(valueEffect), 'effectId': data.value, 'value': valueEffect })
@@ -59,11 +59,11 @@ class WakfuItemStatSum(QAbstractListModel):
         for data in paramsActionEnum:
             valueEffect = 0
             nbItem = 0
-            for item in settings.OPTIMIZED_ITEM_LIST:
-                tempVal = getEquipEffectValueWithParams(settings.ITEMS_DATA[item['id']],data.value)
+            for item_id in settings.OPTIMIZED_ITEM_LIST:
+                tempVal = getEquipEffectValueWithParams(settings.ITEMS_DATA[item_id],data.value)
                 valueEffect += tempVal
                 if tempVal != 0:
-                    nbItem = settings.ITEMS_DATA[item['id']]['definition']['equipEffects'][data.value]['effect']['definition']['params'][2]
+                    nbItem = settings.ITEMS_DATA[item_id]['definition']['equipEffects'][data.value]['effect']['definition']['params'][2]
             if valueEffect != 0 :
                 description=settings.ACTION_DATA[data.value]['definition']['effect']
                 format='{desc} : {value} on {nb} element'

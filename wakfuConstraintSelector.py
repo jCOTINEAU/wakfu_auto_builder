@@ -40,8 +40,8 @@ class WakfuConstraintSelector(QObject):
             RarityConstraint('rarityMythicalSelector','Mythical ==',params=[],default=1,min=0,max=1,color='orange'),
             RarityConstraint('rarityLegendarySelector','Legendary ==',params=[],default=1,min=0,max=1,color='yellow'),
             RarityConstraint('rarityMemorySelector','Memory ==',params=[],default=1,min=0,max=1,color='lightblue'),
-            RarityConstraint('rarityEpicSelector','Epic ==',params=[],default=1,min=0,max=1,color='purple'),
-            RarityConstraint('rarityRelicSelector','Relic ==',params=[],default=1,min=0,max=1,color='pink'),
+            RarityConstraint('rarityEpicSelector','Epic ==',params=[],default=1,min=0,max=1,color='#f9a8d4'),
+            RarityConstraint('rarityRelicSelector','Relic ==',params=[],default=1,min=0,max=1,color='#6d28d9'),
             Constraint('pvSelector','PV >=',color='red',params=[simpleActionEnum.PV_ADD,simpleActionEnum.PV_MINUS]),
             Constraint('paSelector','PA >=',color='blue',params=[simpleActionEnum.PA_ADD,simpleActionEnum.PA_MINUS]),
             Constraint('pmSelector','PM >=',color='green',params=[simpleActionEnum.PM_ADD,simpleActionEnum.PM_MINUS]),
@@ -119,6 +119,23 @@ class WakfuConstraintSelector(QObject):
         self.stuffConstraints.append(createConstraintWithFunc(getWaeponType,"isSecondary")+
             createConstraintWithFunc(getWaeponType,"isTwoHanded") <=1)
     #    #end waepon constraint
+
+        # All-or-none item groups (e.g. Épée + Anneau d'Amakna).
+        # Loaded from data_overrides/item_pairings.json.
+        for group in settings.ITEM_PAIRINGS:
+            present = [i for i in group["items"] if i in settings.VARIABLES]
+            if len(present) < len(group["items"]):
+                # At least one group member was filtered out (level/rarity/excluded)
+                # → the group can't be completed, so forbid the present members.
+                print(f"[pairings] group {group['name']!r} disabled: "
+                      f"{len(present)}/{len(group['items'])} members in pool "
+                      f"(check level/rarity/exclusion filters)")
+                for iid in present:
+                    self.stuffConstraints.append(settings.VARIABLES[iid] == 0)
+                continue
+            anchor = settings.VARIABLES[present[0]]
+            for iid in present[1:]:
+                self.stuffConstraints.append(settings.VARIABLES[iid] == anchor)
 
     def initSolver(self):
 
@@ -320,7 +337,7 @@ class WakfuConstraintSelector(QObject):
           for key,variable in settings.VARIABLES.items():
               if variable.solution_value() == 1:
                   print(settings.ITEMS_DATA[key]['title']['fr'])
-                  myList.append({'id': key, 'name': settings.ITEMS_DATA[key]['title']['fr']})
+                  myList.append(key)
         else:
           print('The solver could not find an optimal solution.')
 
