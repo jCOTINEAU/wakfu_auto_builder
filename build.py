@@ -41,6 +41,40 @@ def _pyside6_site_root() -> Path:
     return Path(PySide6.__file__).resolve().parent.parent
 
 
+def _default_icon_path() -> str:
+    """Return the default PySide6 icon path for the current OS."""
+    import PySide6
+    base = Path(PySide6.__file__).resolve().parent / "scripts" / "deploy_lib"
+    if sys.platform == "darwin":
+        return str(base / "pyside_icon.icns")
+    if sys.platform == "win32":
+        return str(base / "pyside_icon.ico")
+    return str(base / "pyside_icon.jpg")
+
+
+def _rewrite_spec_paths(spec_path: Path) -> None:
+    """Replace machine-specific paths in the staged pysidedeploy.spec.
+
+    `pyside6-deploy --init` hardcodes absolute paths (icon, python_path)
+    from the machine where it was run. We rewrite them to the current
+    machine's PySide6 install so builds work on CI runners with a
+    different layout.
+    """
+    lines = spec_path.read_text(encoding="utf-8").splitlines()
+    icon = _default_icon_path()
+    python_exe = sys.executable
+    rewritten = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("icon = ") or stripped.startswith("icon="):
+            rewritten.append(f"icon = {icon}")
+        elif stripped.startswith("python_path = ") or stripped.startswith("python_path="):
+            rewritten.append(f"python_path = {python_exe}")
+        else:
+            rewritten.append(line)
+    spec_path.write_text("\n".join(rewritten) + "\n", encoding="utf-8")
+
+
 @contextlib.contextmanager
 def hidden_broken_plugins():
     """Temporarily move known-broken plugin dirs OUTSIDE the PySide6 tree
@@ -79,6 +113,9 @@ def project_files() -> list[str]:
 def stage(staging: Path) -> None:
     for name in CONFIG_FILES:
         shutil.copy2(REPO / name, staging / name)
+
+    # Fix machine-specific absolute paths baked into the spec by --init.
+    _rewrite_spec_paths(staging / "pysidedeploy.spec")
 
     # Resource dirs first — they carry every non-python file we need
     # (QML, JSON, SVG assets).
