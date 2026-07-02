@@ -1,7 +1,34 @@
 import os
+import sys
 import settings
 from wakutils import setupJson
 from paths import resource_path
+
+
+def _redirect_output_to_log_when_frozen():
+    """PyInstaller with console=False detaches stdout/stderr; redirect
+    them to a log file so we can diagnose runtime issues.
+
+    Log lives alongside the network-cache in Qt's CacheLocation:
+    - Windows: %LOCALAPPDATA%\\WakfuAutoBuilder\\cache\\app.log
+    - macOS:   ~/Library/Caches/WakfuAutoBuilder/app.log
+    - Linux:   ~/.cache/WakfuAutoBuilder/app.log
+    """
+    if not getattr(sys, "frozen", False):
+        return
+    # Local import: QStandardPaths needs the Qt runtime.
+    from PySide6.QtCore import QStandardPaths
+    log_dir = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, "app.log")
+    # 'w' truncates each run so the log always reflects the last session.
+    f = open(log_path, "w", buffering=1, encoding="utf-8")
+    sys.stdout = f
+    sys.stderr = f
+    print(f"[boot] log file: {log_path}", flush=True)
+
+
+_redirect_output_to_log_when_frozen()
 
 # UI zoom. Set QT_SCALE_FACTOR via environment to override at runtime
 # (e.g. `QT_SCALE_FACTOR=1.5 python main.py`), otherwise falls back to
@@ -9,11 +36,21 @@ from paths import resource_path
 # thing goes through Qt's scaling pipeline.
 os.environ.setdefault("QT_SCALE_FACTOR", "1.3")
 
-import sys
-from PySide6.QtCore import QUrl, QStandardPaths
+from PySide6.QtCore import QUrl, QStandardPaths, qInstallMessageHandler
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
 from PySide6.QtQml import QQmlApplicationEngine, QQmlNetworkAccessManagerFactory
 from PySide6.QtGui import QGuiApplication
+
+
+def _capture_qt_messages():
+    """Route Qt/QML messages (qDebug, console.log, warnings...) to our
+    Python stdout so they land in the log file when frozen."""
+    def handler(mode, ctx, msg):
+        print(f"[qt] {msg}", flush=True)
+    qInstallMessageHandler(handler)
+
+
+_capture_qt_messages()
 from wakfuitemlist import WakfuItemList
 from wakfuItemDetail import WakfuItemDetail
 from wakfuConstraintSelector import WakfuConstraintSelector
