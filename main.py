@@ -5,27 +5,42 @@ from wakutils import setupJson
 from paths import resource_path
 
 
+def _os_cache_dir():
+    """Where to put runtime logs. Pure Python — runs before Qt is loaded,
+    so we can't rely on QStandardPaths (which returns "" without an
+    initialized QCoreApplication)."""
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Caches")
+    else:
+        base = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return os.path.join(base, "WakfuAutoBuilder")
+
+
 def _redirect_output_to_log_when_frozen():
     """PyInstaller with console=False detaches stdout/stderr; redirect
     them to a log file so we can diagnose runtime issues.
 
-    Log lives alongside the network-cache in Qt's CacheLocation:
-    - Windows: %LOCALAPPDATA%\\WakfuAutoBuilder\\cache\\app.log
+    Log path:
+    - Windows: %LOCALAPPDATA%\\WakfuAutoBuilder\\app.log
     - macOS:   ~/Library/Caches/WakfuAutoBuilder/app.log
     - Linux:   ~/.cache/WakfuAutoBuilder/app.log
     """
     if not getattr(sys, "frozen", False):
         return
-    # Local import: QStandardPaths needs the Qt runtime.
-    from PySide6.QtCore import QStandardPaths
-    log_dir = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, "app.log")
-    # 'w' truncates each run so the log always reflects the last session.
-    f = open(log_path, "w", buffering=1, encoding="utf-8")
-    sys.stdout = f
-    sys.stderr = f
-    print(f"[boot] log file: {log_path}", flush=True)
+    try:
+        log_dir = _os_cache_dir()
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "app.log")
+        f = open(log_path, "w", buffering=1, encoding="utf-8")
+        sys.stdout = f
+        sys.stderr = f
+        print(f"[boot] log file: {log_path}", flush=True)
+    except Exception:
+        # If logging setup fails, keep the original stdout/stderr rather
+        # than losing the app entirely to a bad path/permission issue.
+        pass
 
 
 _redirect_output_to_log_when_frozen()
