@@ -24,6 +24,7 @@ Rectangle {
         : "transparent"
 
     Image {
+        id: itemImg
         anchors.centerIn: parent
         width: root.iconSize
         height: root.iconSize
@@ -35,5 +36,24 @@ Rectangle {
         source: root.gfxId > 0
             ? "https://static.ankama.com/wakfu/portal/game/item/64/" + root.gfxId + ".png"
             : ""
+
+        // Qt Network on Windows sometimes drops requests when many icons
+        // fetch in parallel at startup (per-host connection limit). One
+        // silent retry after a short delay covers the flaky cases; the
+        // status stays Error if the second attempt also fails.
+        property int _retriesLeft: 1
+        onStatusChanged: if (status === Image.Error && _retriesLeft > 0) {
+            _retriesLeft -= 1
+            retryTimer.restart()
+        }
+        Timer {
+            id: retryTimer
+            interval: 500
+            onTriggered: {
+                var s = itemImg.source
+                itemImg.source = ""
+                itemImg.source = s
+            }
+        }
     }
 }
