@@ -23,11 +23,13 @@ from pathlib import Path
 
 from damage_calculator import (
     CasterStats,
+    Element,
     Orientation,
     Spell,
     TargetStats,
     compute_spell_damage_raw,
 )
+from effects import SimState, SpellEffects, apply_pre_damage, apply_post_damage
 
 
 # ---------------------------------------------------------------------------
@@ -37,10 +39,14 @@ from damage_calculator import (
 @dataclass
 class StepConfig:
     name: str
-    spell: Spell
+    spell: Spell | None = None  # None = marker step (apply_stacks only, no damage)
     orientation: Orientation = Orientation.FRONT
     caster_modifiers: dict[str, int] = field(default_factory=dict)
     target_modifiers: dict[str, int] = field(default_factory=dict)
+    spell_effects: SpellEffects = field(default_factory=SpellEffects)
+    apply_stacks: dict[str, int] = field(default_factory=dict)  # marker step: add these to state
+    is_marker: bool = False
+    end_of_turn: bool = False  # marker flag: increment turn counter after this step
 
 
 @dataclass
@@ -52,6 +58,7 @@ class ScenarioConfig:
     seed: int | None = None
     thresholds: list[int] = field(default_factory=list)
     level: int | None = None
+    initial_stacks: dict[str, int] = field(default_factory=dict)  # e.g. {"point_faible": 50}
 
 
 @dataclass
@@ -110,19 +117,66 @@ def simulate_step(
 
 
 def run_scenario(config: ScenarioConfig) -> ScenarioResult:
-    """Execute the scenario N times and aggregate results."""
+    """Execute the scenario N times and aggregate results.
+
+    Auto-applies stack effects (point_faible, hemorragie) across steps.
+    Manual caster_modifiers / spell_modifiers stack ON TOP of auto effects.
+    """
     rng = random.Random(config.seed)
     step_damages: list[list[int]] = [[] for _ in config.steps]
     total_damages: list[int] = []
 
     for _ in range(config.iterations):
+        # Fresh state for each iteration, seeded with initial stacks
+        state = SimState(
+            caster=replace(config.caster),
+            point_faible=config.initial_stacks.get("point_faible", 0),
+            hemorragie=config.initial_stacks.get("hemorragie", 0),
+        )
         total = 0
         for i, step in enumerate(config.steps):
-            caster = apply_modifiers(config.caster, step.caster_modifiers)
+            if step.is_marker:
+                # Marker step: just apply stacks, no damage
+                for stack_name, delta in step.apply_stacks.items():
+                    if stack_name == "point_faible":
+                        state.add_point_faible(delta)
+                    elif stack_name == "hemorragie":
+                        state.add_hemorragie(delta)
+                    else:
+                        raise ValueError(f"Unknown stack: {stack_name}")
+                if step.end_of_turn:
+                    state.tick_end_of_turn()
+                step_damages[i].append(0)
+                continue
+
+            # 1. Apply manual caster_modifiers on top of base state
+            caster = apply_modifiers(state.caster, step.caster_modifiers)
             target = apply_modifiers(config.target, step.target_modifiers)
-            dmg = simulate_step(caster, target, step.spell, step.orientation, rng)
+
+            # 2. Apply auto pre-damage effects (consume stacks, fire hem application)
+            res = apply_pre_damage(state, step.spell, step.spell_effects, step.orientation)
+
+            # 3. Adjust spell/caster with auto-computed bonuses
+            effective_spell = replace(step.spell,
+                bonus_base_percent=step.spell.bonus_base_percent + res.bonus_base_percent
+            )
+            effective_caster = replace(caster,
+                final_damage=caster.final_damage + res.df_bonus
+            )
+            # Apply pending buff stat bonuses (e.g., invisibilité +100 DI)
+            for stat_name, delta in res.caster_stat_bonuses.items():
+                current = getattr(effective_caster, stat_name, None)
+                if current is None:
+                    raise ValueError(f"Pending buff targets unknown caster field: {stat_name}")
+                effective_caster = replace(effective_caster, **{stat_name: current + delta})
+
+            # 4. Compute damage
+            dmg = simulate_step(effective_caster, target, effective_spell, step.orientation, rng)
             step_damages[i].append(dmg)
             total += dmg
+
+            # 5. Apply post-damage effects (stacks applied, hem from consumption)
+            apply_post_damage(state, step.spell, step.spell_effects, res, step.orientation)
         total_damages.append(total)
 
     return _aggregate(step_damages, total_damages, config)
@@ -209,6 +263,7 @@ def load_scenario(path: str) -> ScenarioConfig:
         seed=data.get("seed"),
         thresholds=data.get("thresholds", []),
         level=level,
+        initial_stacks=data.get("initial_stacks", {}),
     )
 
 
@@ -223,7 +278,7 @@ def _resolve_spells_dir(spells_dir_str: str, scenario_path: Path) -> Path:
     return p  # will fail at spell load with clear error
 
 
-def load_spell_from_ref(ref: str, level: int, spells_dir: Path) -> Spell:
+def load_spell_from_ref(ref: str, level: int, spells_dir: Path) -> tuple[Spell, SpellEffects]:
     try:
         cls, spell_id = ref.split("/", 1)
     except ValueError:
@@ -243,22 +298,45 @@ def load_spell_from_ref(ref: str, level: int, spells_dir: Path) -> Spell:
         "crit_base": level_data["damage_crit"],
     }
     metadata = data.get("metadata", {})
-    for opt_field in ("is_melee", "is_indirect", "can_crit"):
+    for opt_field in ("is_melee", "is_indirect", "can_crit", "cost_ap"):
         if opt_field in metadata:
             spell_kwargs[opt_field] = metadata[opt_field]
-    return Spell(**spell_kwargs)
+    if "element" in metadata:
+        spell_kwargs["element"] = Element(metadata["element"])
+    effects = SpellEffects.from_dict(data.get("effects"))
+    return Spell(**spell_kwargs), effects
 
 
 def _parse_step(data: dict, level: int | None, spells_dir: Path) -> StepConfig:
+    # Marker step: no spell, just apply stacks (end-of-turn effects, etc.)
+    if "spell" not in data:
+        apply_stacks = data.get("apply_stacks", {})
+        if not apply_stacks:
+            raise ValueError(
+                f"Step '{data.get('name')}' has no 'spell' and no 'apply_stacks' — "
+                f"nothing to do"
+            )
+        return StepConfig(
+            name=data.get("name", "<marker>"),
+            spell=None,
+            apply_stacks=apply_stacks,
+            is_marker=True,
+            end_of_turn=data.get("end_of_turn", False),
+        )
+
     spell_def = data["spell"]
+    effects = SpellEffects()
     if isinstance(spell_def, str):
         if level is None:
             raise ValueError(
                 f"Step '{data.get('name')}' uses spell ref '{spell_def}' "
                 f"but scenario has no 'level' field"
             )
-        spell = load_spell_from_ref(spell_def, level, spells_dir)
+        spell, effects = load_spell_from_ref(spell_def, level, spells_dir)
     elif isinstance(spell_def, dict):
+        # Inline spell: convert element string to enum if present
+        if "element" in spell_def and isinstance(spell_def["element"], str):
+            spell_def = {**spell_def, "element": Element(spell_def["element"])}
         spell = Spell(**spell_def)
     else:
         raise ValueError(f"Step '{data.get('name')}' has invalid 'spell' field: {spell_def!r}")
@@ -274,6 +352,7 @@ def _parse_step(data: dict, level: int | None, spells_dir: Path) -> StepConfig:
         orientation=Orientation(data.get("orientation", "front")),
         caster_modifiers=data.get("caster_modifiers", {}),
         target_modifiers=data.get("target_modifiers", {}),
+        spell_effects=effects,
     )
 
 
@@ -311,6 +390,109 @@ def print_result(result: ScenarioResult) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+def trace_scenario(config: ScenarioConfig) -> None:
+    """Print a detailed step-by-step trace showing stacks, applied effects, and damage.
+    Uses deterministic expected damage (avg of non-crit + crit weighted by CC)."""
+    state = SimState(
+        caster=replace(config.caster),
+        point_faible=config.initial_stacks.get("point_faible", 0),
+        hemorragie=config.initial_stacks.get("hemorragie", 0),
+    )
+    total = 0.0
+
+    print(f"=== TRACE {'='*56}")
+    print(f"Caster base: water={state.caster.water_mastery} air={state.caster.air_mastery} "
+          f"fire={state.caster.fire_mastery} earth={state.caster.earth_mastery} | "
+          f"melee={state.caster.melee_mastery} back={state.caster.back_mastery}")
+    print(f"             CC={state.caster.critical_chance}%  DI={state.caster.damage_inflicted}  "
+          f"DF={state.caster.final_damage}")
+    print(f"Target: res={config.target.elemental_resistance}  parade={config.target.parade_chance}%")
+    print(f"{'='*64}")
+
+    turn = 1
+    for i, step in enumerate(config.steps, 1):
+        pf_before, hem_before = state.point_faible, state.hemorragie
+
+        if step.is_marker:
+            for stack_name, delta in step.apply_stacks.items():
+                if stack_name == "point_faible":
+                    state.add_point_faible(delta)
+                elif stack_name == "hemorragie":
+                    state.add_hemorragie(delta)
+            if step.end_of_turn:
+                state.tick_end_of_turn()
+            marker_label = "END OF TURN" if step.end_of_turn else "MARKER"
+            print(f"\n[T{turn} step {i}] {step.name}  ({marker_label})")
+            print(f"  STATE IN:  pf={pf_before} hem={hem_before}")
+            print(f"  apply_stacks: {dict(step.apply_stacks)}")
+            print(f"  STATE OUT: pf={state.point_faible} hem={state.hemorragie}")
+            if state.pending_buffs:
+                print(f"  pending buffs: {[f'cond={b.condition} apply={b.apply} delayed={b.delayed_turns}' for b in state.pending_buffs]}")
+            if step.end_of_turn:
+                turn += 1
+            continue
+
+        caster = apply_modifiers(state.caster, step.caster_modifiers)
+        target = apply_modifiers(config.target, step.target_modifiers)
+
+        res = apply_pre_damage(state, step.spell, step.spell_effects, step.orientation)
+
+        effective_spell = replace(step.spell,
+            bonus_base_percent=step.spell.bonus_base_percent + res.bonus_base_percent
+        )
+        effective_caster = replace(caster,
+            final_damage=caster.final_damage + res.df_bonus
+        )
+        for stat_name, delta in res.caster_stat_bonuses.items():
+            current = getattr(effective_caster, stat_name, None)
+            if current is not None:
+                effective_caster = replace(effective_caster, **{stat_name: current + delta})
+
+        # Deterministic expected damage (non_crit and crit)
+        nc = compute_spell_damage_raw(effective_caster, target, effective_spell, False, step.orientation, False)
+        cr = compute_spell_damage_raw(effective_caster, target, effective_spell, True, step.orientation, False) if effective_spell.can_crit else nc
+        cc = min(max(effective_caster.critical_chance + effective_spell.bonus_critical_chance, 0), 100)
+        expected = nc * (1 - cc/100) + cr * (cc/100)
+        total += expected
+
+        elem = step.spell.element
+        mast_elem_val = effective_caster.elemental_mastery_for(elem)
+
+        print(f"\n[T{turn} step {i}] {step.name}")
+        print(f"  spell: {elem} base={step.spell.base}/{step.spell.crit_base} "
+              f"is_melee={step.spell.is_melee} is_indirect={step.spell.is_indirect}")
+        print(f"  orientation: {step.orientation}")
+        print(f"  STATE IN:  pf={pf_before} hem={hem_before}")
+        applies_desc = dict(step.spell_effects.applies) if step.spell_effects.applies else None
+        consumes_desc = step.spell_effects.consumes_stack
+        print(f"  effects declared: applies={applies_desc} consumes={consumes_desc}")
+        print(f"  auto: bonus_base_percent +{res.bonus_base_percent}  df +{res.df_bonus}  "
+              f"(ap_gain={res.ap_gained} hem_post={res.hem_gained_post})")
+        if res.caster_stat_bonuses:
+            print(f"  buff consumed: {dict(res.caster_stat_bonuses)}")
+        manual_cm = dict(step.caster_modifiers) if step.caster_modifiers else None
+        manual_sm = {
+            k: v for k, v in vars(step.spell).items()
+            if k in ("bonus_damage_inflicted", "bonus_mastery", "bonus_critical_mastery",
+                     "bonus_critical_chance", "bonus_base_percent") and v
+        }
+        if manual_cm:
+            print(f"  manual caster_modifiers: {manual_cm}")
+        if manual_sm:
+            print(f"  manual spell bonuses: {manual_sm}")
+        print(f"  stats used: mast_elem({elem})={mast_elem_val}  "
+              f"DI={effective_caster.damage_inflicted + effective_spell.bonus_damage_inflicted + target.damage_received}  "
+              f"DF={effective_caster.final_damage}  "
+              f"bonus_base={effective_spell.bonus_base_percent}%")
+        print(f"  damage: nc={nc:.1f}  cr={cr:.1f}  expected@CC{cc}%={expected:.1f}")
+
+        apply_post_damage(state, step.spell, step.spell_effects, res, step.orientation)
+        print(f"  STATE OUT: pf={state.point_faible} hem={state.hemorragie}")
+
+    print(f"\n{'='*64}")
+    print(f"TOTAL expected damage: {total:.1f}")
+
+
 def result_to_json(result: ScenarioResult, config: ScenarioConfig, name: str) -> dict:
     return {
         "name": name,
@@ -330,13 +512,17 @@ if __name__ == "__main__":
     parser.add_argument("scenario", help="Path to scenario JSON file")
     parser.add_argument("--json", action="store_true", help="Output structured JSON to stdout (pipe into compare.py)")
     parser.add_argument("--name", help="Override scenario name in JSON output (default: filename stem)")
+    parser.add_argument("--trace", action="store_true", help="Print step-by-step trace of stacks and effects")
     args = parser.parse_args()
 
     config = load_scenario(args.scenario)
-    result = run_scenario(config)
 
-    if args.json:
-        name = args.name or Path(args.scenario).stem
-        print(json.dumps(result_to_json(result, config, name)))
+    if args.trace:
+        trace_scenario(config)
     else:
-        print_result(result)
+        result = run_scenario(config)
+        if args.json:
+            name = args.name or Path(args.scenario).stem
+            print(json.dumps(result_to_json(result, config, name)))
+        else:
+            print_result(result)

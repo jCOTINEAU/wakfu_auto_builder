@@ -14,11 +14,7 @@ def build_a():
     return {
         "id": "aaa",
         "name": "Build Eau/Air",
-        "items": [
-            {"id": 1, "name": "Casque A"},
-            {"id": 2, "name": "Plastron A"},
-            {"id": 3, "name": "Anneau A"},
-        ],
+        "items": [1, 2, 3],
         "stats": [
             {"effect": "PV : 1200", "effectId": 20, "value": 1200},
             {"effect": "PA : 6", "effectId": 31, "value": 6},
@@ -33,11 +29,7 @@ def build_b():
     return {
         "id": "bbb",
         "name": "Build Feu",
-        "items": [
-            {"id": 1, "name": "Casque A"},
-            {"id": 4, "name": "Plastron B"},
-            {"id": 5, "name": "Anneau B"},
-        ],
+        "items": [1, 4, 5],
         "stats": [
             {"effect": "PV : 1500", "effectId": 20, "value": 1500},
             {"effect": "PA : 6", "effectId": 31, "value": 6},
@@ -133,28 +125,29 @@ class TestStatDeltas:
 
 
 class TestItemDiffs:
+    """compare_builds returns items_added/removed/common as list[int]
+    (just IDs). Name resolution is a UI concern handled by the
+    ComparisonSlotRowModel via wakutils.name_of()."""
+
     def test_common_items(self, build_a, build_b):
         result = build_manager.compare_builds(build_a, build_b)
-        common_ids = {i["id"] for i in result["items_common"]}
-        assert common_ids == {1}
+        assert set(result["items_common"]) == {1}
 
     def test_items_removed(self, build_a, build_b):
         """Items in A but not in B."""
         result = build_manager.compare_builds(build_a, build_b)
-        removed_ids = {i["id"] for i in result["items_removed"]}
-        assert removed_ids == {2, 3}
+        assert set(result["items_removed"]) == {2, 3}
 
     def test_items_added(self, build_a, build_b):
         """Items in B but not in A."""
         result = build_manager.compare_builds(build_a, build_b)
-        added_ids = {i["id"] for i in result["items_added"]}
-        assert added_ids == {4, 5}
+        assert set(result["items_added"]) == {4, 5}
 
-    def test_item_names_preserved(self, build_a, build_b):
+    def test_items_returned_as_sorted_lists(self, build_a, build_b):
         result = build_manager.compare_builds(build_a, build_b)
-        added_names = {i["name"] for i in result["items_added"]}
-        assert "Plastron B" in added_names
-        assert "Anneau B" in added_names
+        assert result["items_added"] == sorted(result["items_added"])
+        assert result["items_removed"] == sorted(result["items_removed"])
+        assert result["items_common"] == sorted(result["items_common"])
 
 
 # ── Build names ──
@@ -180,8 +173,8 @@ class TestEdgeCases:
         assert len(result["items_common"]) == 3
 
     def test_empty_stats(self):
-        a = {"name": "Empty A", "items": [{"id": 1, "name": "X"}], "stats": []}
-        b = {"name": "Empty B", "items": [{"id": 2, "name": "Y"}], "stats": []}
+        a = {"name": "Empty A", "items": [1], "stats": []}
+        b = {"name": "Empty B", "items": [2], "stats": []}
         result = build_manager.compare_builds(a, b)
         assert result["stat_deltas"] == []
         assert len(result["items_added"]) == 1

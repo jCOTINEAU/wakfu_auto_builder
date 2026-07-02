@@ -18,12 +18,13 @@ def save_path(tmp_path):
 
 @pytest.fixture
 def sample_items():
-    """A minimal list of optimized items."""
-    return [
-        {"id": 2001, "name": "Casque A"},
-        {"id": 2002, "name": "Plastron A"},
-        {"id": 2013, "name": "Epee A"},
-    ]
+    """A minimal list of optimized items (item IDs).
+
+    OPTIMIZED_ITEM_LIST is a list[int] in memory and on disk. Legacy
+    saved_builds.json with [{id, name}] entries is auto-normalized by
+    build_manager._normalize_items on load.
+    """
+    return [2001, 2002, 2013]
 
 
 @pytest.fixture
@@ -209,7 +210,7 @@ class TestOverwriteBuild:
             "Original", sample_items,
             constraints={"level": 200}, stats=sample_stats, path=save_path,
         )
-        new_items = [{"id": 9999, "name": "Nouvel Item"}]
+        new_items = [9999]
         new_stats = [{"effect": "PM : 3", "effectId": 41, "value": 3}]
         new_constraints = {"level": 100}
 
@@ -228,7 +229,7 @@ class TestOverwriteBuild:
         original_id = entry["id"]
         original_name = entry["name"]
 
-        new_items = [{"id": 42, "name": "Item X"}]
+        new_items = [42]
         result = build_manager.overwrite_build(original_id, new_items, path=save_path)
 
         assert result["id"] == original_id
@@ -255,7 +256,7 @@ class TestOverwriteBuild:
 
     def test_overwrite_persists_to_disk(self, save_path, sample_items):
         entry = build_manager.save_build("Persist", sample_items, path=save_path)
-        new_items = [{"id": 7, "name": "Dague"}]
+        new_items = [7]
         build_manager.overwrite_build(entry["id"], new_items, path=save_path)
 
         reloaded = build_manager.get_build(entry["id"], path=save_path)
@@ -266,7 +267,7 @@ class TestOverwriteBuild:
         keep = build_manager.save_build("Keep", sample_items, path=save_path)
         target = build_manager.save_build("Target", sample_items, path=save_path)
 
-        new_items = [{"id": 1, "name": "Changed"}]
+        new_items = [1]
         build_manager.overwrite_build(target["id"], new_items, path=save_path)
 
         kept = build_manager.get_build(keep["id"], path=save_path)
@@ -391,6 +392,7 @@ class TestProfileId:
             constraints={"levelSelector": 200},
             stats=sample_stats,
             excluded_items=[42, 99],
+            forced_items=[26497, 26578],
             profile_id="full-prof-id",
             path=save_path,
         )
@@ -400,4 +402,93 @@ class TestProfileId:
         assert reloaded["constraints"] == {"levelSelector": 200}
         assert reloaded["stats"] == sample_stats
         assert reloaded["excluded_items"] == [42, 99]
+        assert reloaded["forced_items"] == [26497, 26578]
         assert reloaded["profile_id"] == "full-prof-id"
+
+
+# ── forced_items ──
+
+
+class TestForcedItems:
+    def test_save_stores_forced_items(self, save_path, sample_items):
+        forced = [26497, 26578]  # Épée + Anneau de Brâkmar
+        entry = build_manager.save_build(
+            "With forced", sample_items,
+            forced_items=forced, path=save_path,
+        )
+        assert entry["forced_items"] == forced
+
+    def test_save_defaults_to_empty_forced(self, save_path, sample_items):
+        entry = build_manager.save_build("No forced", sample_items, path=save_path)
+        assert entry["forced_items"] == []
+
+    def test_get_build_returns_forced_items(self, save_path, sample_items):
+        forced = [1234]
+        entry = build_manager.save_build(
+            "Test", sample_items,
+            forced_items=forced, path=save_path,
+        )
+        reloaded = build_manager.get_build(entry["id"], path=save_path)
+        assert reloaded["forced_items"] == forced
+
+    def test_overwrite_replaces_forced_items(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Original", sample_items,
+            forced_items=[100], path=save_path,
+        )
+        new_forced = [200, 300]
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items,
+            forced_items=new_forced, path=save_path,
+        )
+        assert result["forced_items"] == new_forced
+
+    def test_overwrite_clears_forced_when_none(self, save_path, sample_items):
+        entry = build_manager.save_build(
+            "Had forced", sample_items,
+            forced_items=[42], path=save_path,
+        )
+        result = build_manager.overwrite_build(
+            entry["id"], sample_items, path=save_path,
+        )
+        assert result["forced_items"] == []
+
+
+# ── legacy format normalization ──
+
+
+class TestLegacyItemFormat:
+    """Older saved_builds.json shipped items as [{id, name}]; new code stores
+    them as list[int]. build_manager._normalize_items handles both on load."""
+
+    def test_normalize_from_legacy_dict_list(self):
+        legacy = [{"id": 100, "name": "A"}, {"id": 200, "name": "B"}]
+        assert build_manager._normalize_items(legacy) == [100, 200]
+
+    def test_normalize_from_current_int_list(self):
+        current = [100, 200, 300]
+        assert build_manager._normalize_items(current) == [100, 200, 300]
+
+    def test_normalize_empty(self):
+        assert build_manager._normalize_items([]) == []
+
+    def test_normalize_skips_dict_missing_id(self):
+        malformed = [{"id": 1, "name": "ok"}, {"name": "no id"}, {"id": 3}]
+        assert build_manager._normalize_items(malformed) == [1, 3]
+
+    def test_load_file_normalizes_legacy_shape(self, save_path):
+        """A hand-crafted legacy JSON on disk loads as list[int]."""
+        legacy_payload = [{
+            "id": "abc",
+            "name": "Legacy Build",
+            "created_at": "2024-01-01T00:00:00",
+            "items": [{"id": 1, "name": "X"}, {"id": 2, "name": "Y"}],
+            "constraints": {},
+            "stats": [],
+            "excluded_items": [],
+            "profile_id": "",
+        }]
+        with open(save_path, "w") as f:
+            json.dump(legacy_payload, f)
+        builds = build_manager.list_builds(path=save_path)
+        assert builds[0]["items"] == [1, 2]

@@ -4,7 +4,8 @@
   "description": "",
   "metadata": {
     "description": "",
-    "cost_ap": 3
+    "cost_ap": 3,
+    "element": "fire"
   },
   "damage_per_level": [
     {
@@ -12,5 +13,15 @@
       "damage_non_crit": 21,
       "damage_crit": 26
     }
-  ]
+  ],
+  "effects": {
+    "applies": {
+      "point_faible": 15,
+      "hemorragie": 6
+    },
+    "recast_at_next_turn_start": {
+      "orientation": "front",
+      "is_melee": false
+    }
+  }
 }

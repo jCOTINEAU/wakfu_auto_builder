@@ -4,7 +4,8 @@
   "description": "",
   "metadata": {
     "description": "",
-    "cost_ap": 3
+    "cost_ap": 3,
+    "element": "air"
   },
   "damage_per_level": [
     {
@@ -12,5 +13,10 @@
       "damage_non_crit": 26,
       "damage_crit": 32
     }
-  ]
+  ],
+  "effects": {
+    "applies": {
+      "point_faible": 15
+    }
+  }
 }

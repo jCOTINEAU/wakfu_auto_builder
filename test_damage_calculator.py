@@ -69,7 +69,7 @@ class TestBasicDamage:
         assert dmg == 100
 
     def test_mastery_scaling(self):
-        caster = CasterStats(elemental_mastery=100)
+        caster = CasterStats(water_mastery=100, air_mastery=100, fire_mastery=100, earth_mastery=100)
         target = TargetStats()
         spell = Spell(base=100)
         dmg = compute_spell_damage(caster, target, spell, is_crit=False)
@@ -191,7 +191,7 @@ class TestRealValues:
         Raw = 7 × 1.08 = 7.56 → 56% chance of 8, 44% chance of 7.
         """
         caster = CasterStats(
-            elemental_mastery=0,
+            water_mastery=0, air_mastery=0, fire_mastery=0, earth_mastery=0,
             damage_inflicted=8,
             critical_chance=3,
         )
@@ -209,7 +209,7 @@ class TestRealValues:
         25 elem mastery, 8% DI, base 7, back, 0 res.
         In-game: observed 11 and 12 (non-crit).
         """
-        caster = CasterStats(elemental_mastery=25, damage_inflicted=8, critical_chance=3)
+        caster = CasterStats(water_mastery=25, air_mastery=25, fire_mastery=25, earth_mastery=25, damage_inflicted=8, critical_chance=3)
         target = TargetStats(elemental_resistance=0)
         spell = Spell(base=7)
 
@@ -222,7 +222,7 @@ class TestRealValues:
         25 elem mastery, 8% DI, base 7, face, 0 res.
         In-game: observed 9 and 10 (non-crit).
         """
-        caster = CasterStats(elemental_mastery=25, damage_inflicted=8, critical_chance=3)
+        caster = CasterStats(water_mastery=25, air_mastery=25, fire_mastery=25, earth_mastery=25, damage_inflicted=8, critical_chance=3)
         target = TargetStats(elemental_resistance=0)
         spell = Spell(base=7)
 
@@ -237,7 +237,7 @@ class TestRealValues:
         In-game: observed 161 and 162 (non-crit).
         """
         caster = CasterStats(
-            elemental_mastery=140,
+            water_mastery=140, air_mastery=140, fire_mastery=140, earth_mastery=140,
             damage_inflicted=18,
             critical_chance=3,
             distance_mastery=120,
@@ -256,7 +256,7 @@ class TestRealValues:
         Confirms ceil(base × 1.25) intermediate rounding on crit.
         """
         caster = CasterStats(
-            elemental_mastery=140,
+            water_mastery=140, air_mastery=140, fire_mastery=140, earth_mastery=140,
             damage_inflicted=43,
             critical_chance=3,
             distance_mastery=120,
@@ -276,7 +276,7 @@ class TestRealValues:
         In-game: observed 64 and 65 (non-crit).
         """
         caster = CasterStats(
-            elemental_mastery=140,
+            water_mastery=140, air_mastery=140, fire_mastery=140, earth_mastery=140,
             damage_inflicted=18,
             critical_chance=3,
             distance_mastery=120,
@@ -296,7 +296,7 @@ class TestRealValues:
         Hemorrhage 40%: observed 175 (on crit 438).
         """
         caster = CasterStats(
-            elemental_mastery=236,
+            water_mastery=236, air_mastery=236, fire_mastery=236, earth_mastery=236,
             damage_inflicted=58,
             critical_chance=30,
             melee_mastery=290,

@@ -49,7 +49,7 @@ jobs:
             ~/.cache/Nuitka
             ~/AppData/Local/Nuitka/Nuitka/Cache
             ~/Library/Caches/Nuitka
-          key: nuitka-${{ matrix.os }}-${{ hashFiles('requirements-lock.txt', 'main.py', 'wakutils.py', 'paths.py') }}
+          key: nuitka-${{ matrix.os }}-${{ hashFiles('requirements-lock.txt', 'pysidedeploy.spec', 'main.py', 'wakutils.py', 'paths.py') }}
           restore-keys: |
             nuitka-${{ matrix.os }}-
 

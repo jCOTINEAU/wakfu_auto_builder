@@ -2,26 +2,25 @@
   "iterations": 10000,
   "seed": 42,
   "level": 50,
-
   "caster": {
-    "elemental_mastery": 274,
     "back_mastery": 223,
     "melee_mastery": 290,
     "critical_chance": 35,
-    "damage_inflicted": 116
+    "damage_inflicted": 116,
+    "water_mastery": 227,
+    "air_mastery": 121,
+    "fire_mastery": 227,
+    "earth_mastery": 133
   },
-
   "target": {
     "elemental_resistance": 0,
     "parade_chance": 0
   },
-
   "steps": [
     {
       "name": "T1 Perfide dos (-40% armure)",
       "spell": "Sram/perfide",
-      "orientation": "back",
-      "spell_modifiers": { "bonus_base_percent": -40 }
+      "orientation": "back"
     },
     {
       "name": "T1 Klepto dos",
@@ -36,8 +35,7 @@
     {
       "name": "T1 Perfide dos (-40% armure)",
       "spell": "Sram/perfide",
-      "orientation": "back",
-      "spell_modifiers": { "bonus_base_percent": -40 }
+      "orientation": "back"
     },
     {
       "name": "T1 Klepto dos",
@@ -52,20 +50,17 @@
     {
       "name": "T1 Trauma dos (+100 base)",
       "spell": "Sram/trauma",
-      "orientation": "back",
-      "spell_modifiers": { "bonus_base_percent": 100 }
+      "orientation": "back"
     },
     {
       "name": "T1 Saignee dos",
       "spell": "Sram/saignee",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 }
+      "orientation": "back"
     },
     {
       "name": "T1 Klepto dos",
       "spell": "Sram/klepto",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 }
+      "orientation": "back"
     },
     {
       "name": "FIN T1",
@@ -75,21 +70,17 @@
     {
       "name": "T2 Saignee face (-12 DI)",
       "spell": "Sram/saignee",
-      "orientation": "front",
-      "caster_modifiers": { "final_damage": 40, "damage_inflicted": -12 }
+      "orientation": "front"
     },
     {
       "name": "T2 Perfide dos (-40% armure)",
       "spell": "Sram/perfide",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 },
-      "spell_modifiers": { "bonus_base_percent": -40 }
+      "orientation": "back"
     },
     {
       "name": "T2 Klepto dos",
       "spell": "Sram/klepto",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 }
+      "orientation": "back"
     },
     {
       "name": "T2 Lumiere dos",
@@ -99,15 +90,12 @@
     {
       "name": "T2 Perfide dos (-40% armure)",
       "spell": "Sram/perfide",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 },
-      "spell_modifiers": { "bonus_base_percent": -40 }
+      "orientation": "back"
     },
     {
       "name": "T2 Klepto dos",
       "spell": "Sram/klepto",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 }
+      "orientation": "back"
     },
     {
       "name": "T2 Lumiere dos",
@@ -117,21 +105,20 @@
     {
       "name": "T2 Trauma dos (+100 base)",
       "spell": "Sram/trauma",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 },
-      "spell_modifiers": { "bonus_base_percent": 100 }
+      "orientation": "back"
     },
     {
       "name": "T2 Klepto dos",
       "spell": "Sram/klepto",
-      "orientation": "back",
-      "caster_modifiers": { "final_damage": 40 }
+      "orientation": "back"
     },
     {
       "name": "T2 Saignee face (-12 DI)",
       "spell": "Sram/saignee",
-      "orientation": "front",
-      "caster_modifiers": { "final_damage": 40}
+      "orientation": "front"
     }
-  ]
+  ],
+  "initial_stacks": {
+    "point_faible": 50
+  }
 }

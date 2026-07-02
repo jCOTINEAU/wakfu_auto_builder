@@ -104,7 +104,7 @@ class TestLoadScenario:
             "steps": [
                 {
                     "name": "Sort A",
-                    "spell": {"base": 48, "crit_multiplier": 1.2375},
+                    "spell": {"base": 48, "crit_base": 59},
                     "orientation": "back",
                     "caster_modifiers": {"damage_inflicted": 18},
                     "target_modifiers": {"elemental_resistance": -50},
@@ -123,7 +123,7 @@ class TestLoadScenario:
         step = config.steps[0]
         assert step.name == "Sort A"
         assert step.spell.base == 48
-        assert step.spell.crit_multiplier == 1.2375
+        assert step.spell.crit_base == 59
         assert step.orientation == Orientation.BACK
         assert step.caster_modifiers == {"damage_inflicted": 18}
         assert step.target_modifiers == {"elemental_resistance": -50}
@@ -148,7 +148,7 @@ class TestRunScenario:
     def test_reproducible_with_seed(self):
         """Same seed + same config → identical result."""
         config = ScenarioConfig(
-            caster=CasterStats(elemental_mastery=100, critical_chance=30),
+            caster=CasterStats(air_mastery=100, critical_chance=30),
             target=TargetStats(parade_chance=20),
             steps=[StepConfig(name="s", spell=Spell(base=50))],
             iterations=200,

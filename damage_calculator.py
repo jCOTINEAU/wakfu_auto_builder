@@ -21,6 +21,14 @@ class Orientation(StrEnum):
     BACK = "back"
 
 
+class Element(StrEnum):
+    WATER = "water"
+    AIR = "air"
+    FIRE = "fire"
+    EARTH = "earth"
+    LIGHT = "light"  # polyvalent: picks max of the 4 elemental masteries
+
+
 ORIENTATION_BONUS = {
     Orientation.FRONT: 1.0,
     Orientation.SIDE: 1.1,
@@ -30,7 +38,11 @@ ORIENTATION_BONUS = {
 
 @dataclass
 class CasterStats:
-    elemental_mastery: int = 0
+    water_mastery: int = 0
+    air_mastery: int = 0
+    fire_mastery: int = 0
+    earth_mastery: int = 0
+
     critical_mastery: int = 0
     melee_mastery: int = 0
     distance_mastery: int = 0
@@ -42,6 +54,14 @@ class CasterStats:
     final_damage: int = 0  # % DF (final damage multiplier)
 
     is_berserk: bool = False  # below 50% HP
+
+    def elemental_mastery_for(self, element: Element | str) -> int:
+        """Return the applicable elemental mastery for a given element.
+        Light picks the max of the four per-element masteries."""
+        if element == Element.LIGHT or element == "light":
+            return max(self.water_mastery, self.air_mastery,
+                       self.fire_mastery, self.earth_mastery)
+        return getattr(self, f"{element}_mastery")
 
 
 @dataclass
@@ -60,6 +80,9 @@ class Spell:
     base: int = 0       # DJ: non-crit base as shown in-game
     crit_base: int = 0  # DCJ: crit base as shown in-game (0 = cannot crit)
     can_crit: bool = True
+
+    element: Element = Element.AIR  # which elemental mastery applies
+    cost_ap: int = 0  # AP cost (for conditional buffs like invisibilité)
 
     is_melee: bool = True  # target within 1-2 cells
     is_indirect: bool = False  # poison, glyph, trap
@@ -100,7 +123,7 @@ def compute_applicable_masteries(
     orientation: Orientation,
 ) -> int:
     """Sum all applicable masteries for a given context."""
-    total = caster.elemental_mastery + spell.bonus_mastery
+    total = caster.elemental_mastery_for(spell.element) + spell.bonus_mastery
 
     if spell.is_melee:
         total += caster.melee_mastery
@@ -273,7 +296,10 @@ def compute_bonus_damage(main_damage_raw: float, percent: float) -> StochasticDa
 
 if __name__ == "__main__":
     caster = CasterStats(
-        elemental_mastery=1500,
+        water_mastery=1500,
+        air_mastery=1500,
+        fire_mastery=1500,
+        earth_mastery=1500,
         critical_mastery=200,
         melee_mastery=300,
         critical_chance=40,

@@ -1,20 +1,20 @@
 {
   "iterations": 10000,
   "seed": 42,
-
   "caster": {
-    "elemental_mastery": 272,
     "melee_mastery": 287,
     "back_mastery": 145,
     "critical_chance": 30,
-    "damage_inflicted": 58
+    "damage_inflicted": 58,
+    "water_mastery": 272,
+    "air_mastery": 272,
+    "fire_mastery": 272,
+    "earth_mastery": 272
   },
-
   "target": {
     "elemental_resistance": 0,
     "parade_chance": 0
   },
-
   "steps": [
     {
       "name": "Sort A (dos, base 48, +100%)",
@@ -25,7 +25,9 @@
         "bonus_base_percent": 100
       },
       "orientation": "back",
-      "caster_modifiers": { "damage_inflicted": 18 }
+      "caster_modifiers": {
+        "damage_inflicted": 18
+      }
     },
     {
       "name": "Sort B (face, base 21, -12% face)",
@@ -35,9 +37,14 @@
         "is_melee": true
       },
       "orientation": "front",
-      "caster_modifiers": { "damage_inflicted": -12 }
+      "caster_modifiers": {
+        "damage_inflicted": -12
+      }
     }
   ],
-
-  "thresholds": [2000, 2500, 3000]
+  "thresholds": [
+    2000,
+    2500,
+    3000
+  ]
 }

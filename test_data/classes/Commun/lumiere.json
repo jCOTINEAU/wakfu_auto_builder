@@ -4,7 +4,9 @@
   "description": "",
   "metadata": {
     "description": "",
-    "cost_ap": 0
+    "cost_ap": 0,
+    "element": "light",
+    "is_indirect": true
   },
   "damage_per_level": [
     {

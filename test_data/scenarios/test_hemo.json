@@ -2,20 +2,20 @@
   "iterations": 10000,
   "seed": 42,
   "level": 50,
-
   "caster": {
-    "elemental_mastery": 132,
     "back_mastery": 223,
     "melee_mastery": 290,
     "critical_chance": 100,
-    "damage_inflicted": 76
+    "damage_inflicted": 76,
+    "water_mastery": 132,
+    "air_mastery": 132,
+    "fire_mastery": 132,
+    "earth_mastery": 132
   },
-
   "target": {
     "elemental_resistance": 0,
     "parade_chance": 0
   },
-
   "steps": [
     {
       "name": "Mise dos (hemorragie)",

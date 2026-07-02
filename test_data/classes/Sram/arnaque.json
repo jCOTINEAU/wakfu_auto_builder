@@ -4,7 +4,8 @@
   "description": "",
   "metadata": {
     "description": "",
-    "cost_ap": 2
+    "cost_ap": 2,
+    "element": "water"
   },
   "damage_per_level": [
     {
@@ -12,5 +13,10 @@
       "damage_non_crit": 14,
       "damage_crit": 17
     }
-  ]
+  ],
+  "effects": {
+    "consumes": {
+      "stack": "point_faible"
+    }
+  }
 }
