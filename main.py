@@ -51,7 +51,12 @@ if __name__ == "__main__":
     #Set up the application window
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
-    engine.setNetworkAccessManagerFactory(DiskCachedNetworkManagerFactory())
+
+    # Hold a strong Python reference to the factory — PySide6 doesn't
+    # transfer ownership to the engine, so an anonymous instance gets
+    # garbage-collected and QML segfaults on the next fetch.
+    _network_factory = DiskCachedNetworkManagerFactory()
+    engine.setNetworkAccessManagerFactory(_network_factory)
 
     settings.initGlobal()
     setupJson()
