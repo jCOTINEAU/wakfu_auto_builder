@@ -70,7 +70,7 @@ mode = onefile
 # specify any extra nuitka arguments
 # --include-data-dir bundles the source-relative dirs into the frozen
 # binary so paths.resource_path() finds them at runtime.
-extra_args = --quiet --noinclude-qt-translations --include-data-dir=data=data --include-data-dir=data_overrides=data_overrides --include-data-dir=assets=assets --include-data-dir=views=views --noinclude-dlls=*qtquickshapesdesignhelpers* --noinclude-dlls=*/qml/QtQuick/Shapes/DesignHelpers/*
+extra_args = --quiet --noinclude-qt-translations --assume-yes-for-downloads --include-data-dir=data=data --include-data-dir=data_overrides=data_overrides --include-data-dir=assets=assets --include-data-dir=views=views --noinclude-dlls=*qtquickshapesdesignhelpers* --noinclude-dlls=*/qml/QtQuick/Shapes/DesignHelpers/*
 
 [buildozer]
 

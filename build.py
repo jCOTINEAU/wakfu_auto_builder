@@ -93,7 +93,7 @@ def hidden_broken_plugins():
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(src), str(dst))
                 moved.append((dst, src))
-                print(f"[build] hiding {rel} → {dst}")
+                print(f"[build] hiding {rel} -> {dst}")
         yield
     finally:
         for dst, src in moved:
@@ -190,7 +190,7 @@ def main() -> int:
             print("[build] ERROR: no output artifact found in staging/deployment/",
                   file=sys.stderr)
             return 1
-        print(f"[build] → {out}")
+        print(f"[build] -> {out}")
         return 0
     finally:
         if args.keep_staging:
