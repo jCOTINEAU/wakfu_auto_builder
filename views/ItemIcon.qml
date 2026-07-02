@@ -37,18 +37,21 @@ Rectangle {
             ? "https://static.ankama.com/wakfu/portal/game/item/64/" + root.gfxId + ".png"
             : ""
 
-        // Qt Network on Windows sometimes drops requests when many icons
-        // fetch in parallel at startup (per-host connection limit). One
-        // silent retry after a short delay covers the flaky cases; the
-        // status stays Error if the second attempt also fails.
-        property int _retriesLeft: 1
-        onStatusChanged: if (status === Image.Error && _retriesLeft > 0) {
-            _retriesLeft -= 1
+        // Qt Network on Windows drops some of the 14 concurrent CDN
+        // fetches at startup (per-host connection limit). Exponential
+        // backoff retries recover the flaky cases; after all retries fail
+        // the status stays Error (probably a real 404 for that gfxId).
+        property int _attempt: 0
+        readonly property var _backoffMs: [500, 1000, 2000]
+
+        onStatusChanged: if (status === Image.Error && _attempt < _backoffMs.length) {
+            retryTimer.interval = _backoffMs[_attempt]
+            _attempt += 1
             retryTimer.restart()
         }
+
         Timer {
             id: retryTimer
-            interval: 500
             onTriggered: {
                 var s = itemImg.source
                 itemImg.source = ""
