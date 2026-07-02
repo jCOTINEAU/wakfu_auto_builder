@@ -41,18 +41,6 @@ jobs:
       - name: Install Python deps
         run: pip install -r requirements-lock.txt
 
-      # Nuitka's C++ cache speeds up subsequent builds dramatically.
-      - name: Cache Nuitka
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cache/Nuitka
-            ~/AppData/Local/Nuitka/Nuitka/Cache
-            ~/Library/Caches/Nuitka
-          key: nuitka-${{ matrix.os }}-${{ hashFiles('requirements-lock.txt', 'pysidedeploy.spec', 'main.py', 'wakutils.py', 'paths.py') }}
-          restore-keys: |
-            nuitka-${{ matrix.os }}-
-
       - name: Build
         run: python build.py
 
@@ -63,12 +51,12 @@ jobs:
         working-directory: dist
         run: zip -r -y WakfuAutoBuilder-macos.zip .
 
-      # Linux: single .bin, zip for consistency.
+      # Linux: PyInstaller outputs a plain ELF binary (no extension).
       - name: Package (Linux)
         if: matrix.os == 'ubuntu-latest'
         working-directory: dist
         run: |
-          chmod +x *.bin *.dist/* 2>/dev/null || true
+          chmod +x WakfuAutoBuilder 2>/dev/null || true
           zip -r WakfuAutoBuilder-linux.zip .
 
       # Windows: single .exe, zip for consistency.

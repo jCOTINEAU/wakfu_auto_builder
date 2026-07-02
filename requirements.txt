@@ -5,5 +5,5 @@ PySide6==6.10.2
 ortools==9.15.6755
 pytest==9.0.2
 
-# Build tooling (used by build.py / pyside6-deploy).
-Nuitka==2.7.11
+# Build tooling (used by build.py to package the desktop binary).
+pyinstaller==6.16.0
