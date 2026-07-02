@@ -37,23 +37,35 @@ Rectangle {
             ? "https://static.ankama.com/wakfu/portal/game/item/64/" + root.gfxId + ".png"
             : ""
 
-        // Qt Network on Windows drops some of the 14 concurrent CDN
-        // fetches at startup (per-host connection limit). Exponential
-        // backoff retries recover the flaky cases; after all retries fail
-        // the status stays Error (probably a real 404 for that gfxId).
+        // Retry on transient failures. Logs every state transition so we
+        // can see what's actually happening (whether Error fires at all,
+        // how many retries happen, whether the retry succeeds).
         property int _attempt: 0
-        readonly property var _backoffMs: [500, 1000, 2000]
+        readonly property var _backoffMs: [500, 1500, 3500, 7500]
 
-        onStatusChanged: if (status === Image.Error && _attempt < _backoffMs.length) {
-            retryTimer.interval = _backoffMs[_attempt]
-            _attempt += 1
-            retryTimer.restart()
+        onStatusChanged: {
+            var name = status === Image.Null ? "Null"
+                : status === Image.Ready ? "Ready"
+                : status === Image.Loading ? "Loading"
+                : status === Image.Error ? "Error"
+                : "?"
+            console.log("[ItemIcon]", root.gfxId, "status=" + name,
+                        "attempt=" + _attempt, "progress=" + progress)
+            if (status === Image.Error && _attempt < _backoffMs.length) {
+                var base = _backoffMs[_attempt]
+                var jittered = base * (0.6 + Math.random() * 0.8)
+                console.log("[ItemIcon]", root.gfxId, "retry in", Math.round(jittered), "ms")
+                retryTimer.interval = jittered
+                _attempt += 1
+                retryTimer.restart()
+            }
         }
 
         Timer {
             id: retryTimer
             onTriggered: {
                 var s = itemImg.source
+                console.log("[ItemIcon]", root.gfxId, "retry firing, reload source")
                 itemImg.source = ""
                 itemImg.source = s
             }

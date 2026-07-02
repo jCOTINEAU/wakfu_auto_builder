@@ -1,7 +1,7 @@
 import os
 import settings
 from wakutils import setupJson
-from paths import resource_path, user_data_dir
+from paths import resource_path
 
 # UI zoom. Set QT_SCALE_FACTOR via environment to override at runtime
 # (e.g. `QT_SCALE_FACTOR=1.5 python main.py`), otherwise falls back to
@@ -10,7 +10,7 @@ from paths import resource_path, user_data_dir
 os.environ.setdefault("QT_SCALE_FACTOR", "1.3")
 
 import sys
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QUrl, QStandardPaths
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
 from PySide6.QtQml import QQmlApplicationEngine, QQmlNetworkAccessManagerFactory
 from PySide6.QtGui import QGuiApplication
@@ -33,16 +33,24 @@ class DiskCachedNetworkManagerFactory(QQmlNetworkAccessManagerFactory):
     """Attach a persistent disk cache to every QML QNetworkAccessManager.
 
     QML Image URLs (Wakfu CDN item icons) go through this manager. Icons
-    are stored on first fetch and served from disk on subsequent launches
-    — no more per-host connection-limit flakiness on Windows and offline-
-    friendly after the first successful load.
+    are stored on first fetch and served from disk on subsequent launches.
+
+    Cache dir uses QStandardPaths.CacheLocation which resolves to the
+    OS-conventional cache path (Windows: %LOCALAPPDATA%\\<App>\\cache\\,
+    macOS: ~/Library/Caches/<App>/, Linux: ~/.cache/<App>/). Writing to
+    AppData\\Roaming on Windows silently fails for QNetworkDiskCache;
+    Local is where cache data belongs by OS convention.
     """
     def create(self, parent):
         nam = QNetworkAccessManager(parent)
         cache = QNetworkDiskCache(nam)
-        cache.setCacheDirectory(os.path.join(user_data_dir(), "network-cache"))
-        cache.setMaximumCacheSize(50 * 1024 * 1024)   # 50 MB — plenty
+        cache_base = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+        cache_dir = os.path.join(cache_base, "network-cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        cache.setCacheDirectory(cache_dir)
+        cache.setMaximumCacheSize(50 * 1024 * 1024)   # 50 MB
         nam.setCache(cache)
+        print(f"[network-cache] dir={cache_dir}", flush=True)
         return nam
 
 
