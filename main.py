@@ -81,20 +81,38 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject
 
 
-class DiskCachedNetworkManagerFactory(QQmlNetworkAccessManagerFactory):
-    """Attach a persistent disk cache to every QML QNetworkAccessManager.
+class BrowserLikeNAM(QNetworkAccessManager):
+    """QNetworkAccessManager that injects browser-like headers on every
+    outgoing request. Ankama's CDN was returning 403 for Qt's default
+    User-Agent on Windows (observed via the app.log).
+    """
+    _UA = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
 
-    QML Image URLs (Wakfu CDN item icons) go through this manager. Icons
-    are stored on first fetch and served from disk on subsequent launches.
+    def createRequest(self, op, req, outgoingData=None):
+        # Only override if not already set by the QML side.
+        if not req.hasRawHeader(b"User-Agent"):
+            req.setRawHeader(b"User-Agent", self._UA.encode("ascii"))
+        if not req.hasRawHeader(b"Referer"):
+            req.setRawHeader(b"Referer", b"https://www.wakfu.com/")
+        print(f"[http] {req.url().toString()}", flush=True)
+        return super().createRequest(op, req, outgoingData)
+
+
+class DiskCachedNetworkManagerFactory(QQmlNetworkAccessManagerFactory):
+    """Attach a persistent disk cache + browser-like headers to every QML
+    QNetworkAccessManager.
 
     Cache dir uses QStandardPaths.CacheLocation which resolves to the
     OS-conventional cache path (Windows: %LOCALAPPDATA%\\<App>\\cache\\,
     macOS: ~/Library/Caches/<App>/, Linux: ~/.cache/<App>/). Writing to
-    AppData\\Roaming on Windows silently fails for QNetworkDiskCache;
-    Local is where cache data belongs by OS convention.
+    AppData\\Roaming on Windows silently fails for QNetworkDiskCache.
     """
     def create(self, parent):
-        nam = QNetworkAccessManager(parent)
+        nam = BrowserLikeNAM(parent)
         cache = QNetworkDiskCache(nam)
         cache_base = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
         cache_dir = os.path.join(cache_base, "network-cache")
