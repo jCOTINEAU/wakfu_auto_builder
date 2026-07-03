@@ -398,6 +398,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 gfxId: itemAGfxId
                                 rarity: itemARarity
+                                slot: slot
                                 iconSize: 24
                             }
                             Text {
@@ -448,6 +449,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 gfxId: itemBGfxId
                                 rarity: itemBRarity
+                                slot: slot
                                 iconSize: 24
                             }
                             Text {

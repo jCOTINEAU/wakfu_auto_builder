@@ -109,6 +109,7 @@ Item {
                                 Layout.preferredHeight: 32
                                 gfxId: itemGfxId || 0
                                 rarity: itemRarity
+                                slot: itemSlot || ""
                                 iconSize: 26
                             }
 

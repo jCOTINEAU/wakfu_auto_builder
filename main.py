@@ -81,77 +81,31 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Slot,QObject
 
 
-class BrowserLikeNAM(QNetworkAccessManager):
-    """QNetworkAccessManager that injects browser-like headers on outgoing
-    requests to the Ankama CDN. Their WAF returns 403 for Qt's default
-    User-Agent on Windows (observed in app.log).
-
-    NOTE: createRequest may run on a Qt worker thread; avoid Python I/O
-    here (print, logging) as it can deadlock or crash the interpreter.
-    Logging is done on the `finished` signal instead (main thread).
-    """
-    _UA = (
-        b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        b"AppleWebKit/537.36 (KHTML, like Gecko) "
-        b"Chrome/120.0.0.0 Safari/537.36"
-    )
-    _REFERER = b"https://www.wakfu.com/"
-    _TARGET_HOST = "static.ankama.com"
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # Diagnostic: log status + headers of every finished response so
-        # we can distinguish 403 from timeouts, wrong URLs, etc.
-        self.finished.connect(self._log_reply)
-
-    def _log_reply(self, reply):
-        try:
-            url = reply.url().toString()
-            if self._TARGET_HOST not in url:
-                return
-            from PySide6.QtNetwork import QNetworkRequest
-            status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
-            err = reply.error()
-            err_str = reply.errorString() if err else "OK"
-            def _hdr(name):
-                v = reply.rawHeader(name)
-                return bytes(v).decode(errors="replace") if v else ""
-            server = _hdr("Server")
-            cf_ray = _hdr("Cf-Ray")
-            content_type = _hdr("Content-Type")
-            content_length = _hdr("Content-Length")
-            print(f"[http] {url} → status={status} err={err_str}"
-                  f" server={server} cf-ray={cf_ray}"
-                  f" ct={content_type} cl={content_length}", flush=True)
-        except Exception as e:
-            print(f"[http-log-err] {e}", flush=True)
-
-    def createRequest(self, op, req, outgoingData=None):
-        try:
-            if req.url().host() == self._TARGET_HOST:
-                if not req.hasRawHeader(b"User-Agent"):
-                    req.setRawHeader(b"User-Agent", self._UA)
-                if not req.hasRawHeader(b"Referer"):
-                    req.setRawHeader(b"Referer", self._REFERER)
-        except Exception:
-            # Never let a header tweak block the actual network call.
-            pass
-        if outgoingData is None:
-            return super().createRequest(op, req)
-        return super().createRequest(op, req, outgoingData)
+def _log_non_ok_reply(reply):
+    """Log only replies that are NOT 200 — helps investigate future CDN
+    issues without spamming the log with every successful fetch."""
+    try:
+        from PySide6.QtNetwork import QNetworkRequest
+        status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        if status == 200:
+            return
+        url = reply.url().toString()
+        err = reply.errorString() if reply.error() else ""
+        print(f"[http-fail] {url} status={status} err={err}", flush=True)
+    except Exception as e:
+        print(f"[http-log-err] {e}", flush=True)
 
 
 class DiskCachedNetworkManagerFactory(QQmlNetworkAccessManagerFactory):
-    """Attach a persistent disk cache + browser-like headers to every QML
-    QNetworkAccessManager.
+    """Attach a persistent disk cache to every QML QNetworkAccessManager.
 
-    Cache dir uses QStandardPaths.CacheLocation which resolves to the
-    OS-conventional cache path (Windows: %LOCALAPPDATA%\\<App>\\cache\\,
-    macOS: ~/Library/Caches/<App>/, Linux: ~/.cache/<App>/). Writing to
-    AppData\\Roaming on Windows silently fails for QNetworkDiskCache.
+    Cache dir uses QStandardPaths.CacheLocation (OS-conventional cache
+    path: %LOCALAPPDATA%\\<App>\\cache\\ on Windows, ~/Library/Caches
+    on macOS, ~/.cache on Linux). Writing to Roaming on Windows silently
+    fails for QNetworkDiskCache — Local is where cache data belongs.
     """
     def create(self, parent):
-        nam = BrowserLikeNAM(parent)
+        nam = QNetworkAccessManager(parent)
         cache = QNetworkDiskCache(nam)
         cache_base = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
         cache_dir = os.path.join(cache_base, "network-cache")
@@ -159,6 +113,7 @@ class DiskCachedNetworkManagerFactory(QQmlNetworkAccessManagerFactory):
         cache.setCacheDirectory(cache_dir)
         cache.setMaximumCacheSize(50 * 1024 * 1024)   # 50 MB
         nam.setCache(cache)
+        nam.finished.connect(_log_non_ok_reply)
         print(f"[network-cache] dir={cache_dir}", flush=True)
         return nam
 
