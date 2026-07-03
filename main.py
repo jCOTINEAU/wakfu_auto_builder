@@ -88,6 +88,7 @@ class BrowserLikeNAM(QNetworkAccessManager):
 
     NOTE: createRequest may run on a Qt worker thread; avoid Python I/O
     here (print, logging) as it can deadlock or crash the interpreter.
+    Logging is done on the `finished` signal instead (main thread).
     """
     _UA = (
         b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -96,6 +97,31 @@ class BrowserLikeNAM(QNetworkAccessManager):
     )
     _REFERER = b"https://www.wakfu.com/"
     _TARGET_HOST = "static.ankama.com"
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Diagnostic: log status + headers of every finished response so
+        # we can distinguish 403 from timeouts, wrong URLs, etc.
+        self.finished.connect(self._log_reply)
+
+    def _log_reply(self, reply):
+        try:
+            url = reply.url().toString()
+            if self._TARGET_HOST not in url:
+                return
+            from PySide6.QtNetwork import QNetworkRequest
+            status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+            err = reply.error()
+            err_str = reply.errorString() if err else "OK"
+            server = bytes(reply.rawHeader(b"Server")).decode(errors="replace")
+            cf_ray = bytes(reply.rawHeader(b"Cf-Ray")).decode(errors="replace")
+            content_type = bytes(reply.rawHeader(b"Content-Type")).decode(errors="replace")
+            content_length = bytes(reply.rawHeader(b"Content-Length")).decode(errors="replace")
+            print(f"[http] {url} → status={status} err={err_str}"
+                  f" server={server} cf-ray={cf_ray}"
+                  f" ct={content_type} cl={content_length}", flush=True)
+        except Exception as e:
+            print(f"[http-log-err] {e}", flush=True)
 
     def createRequest(self, op, req, outgoingData=None):
         try:

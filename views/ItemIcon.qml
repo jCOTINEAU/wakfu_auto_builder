@@ -50,7 +50,8 @@ Rectangle {
                 : status === Image.Error ? "Error"
                 : "?"
             console.log("[ItemIcon]", root.gfxId, "status=" + name,
-                        "attempt=" + _attempt, "progress=" + progress)
+                        "attempt=" + _attempt, "progress=" + progress,
+                        "url=" + itemImg.source)
             if (status === Image.Error && _attempt < _backoffMs.length) {
                 var base = _backoffMs[_attempt]
                 var jittered = base * (0.6 + Math.random() * 0.8)
