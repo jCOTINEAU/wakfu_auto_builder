@@ -113,10 +113,13 @@ class BrowserLikeNAM(QNetworkAccessManager):
             status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
             err = reply.error()
             err_str = reply.errorString() if err else "OK"
-            server = bytes(reply.rawHeader(b"Server")).decode(errors="replace")
-            cf_ray = bytes(reply.rawHeader(b"Cf-Ray")).decode(errors="replace")
-            content_type = bytes(reply.rawHeader(b"Content-Type")).decode(errors="replace")
-            content_length = bytes(reply.rawHeader(b"Content-Length")).decode(errors="replace")
+            def _hdr(name):
+                v = reply.rawHeader(name)
+                return bytes(v).decode(errors="replace") if v else ""
+            server = _hdr("Server")
+            cf_ray = _hdr("Cf-Ray")
+            content_type = _hdr("Content-Type")
+            content_length = _hdr("Content-Length")
             print(f"[http] {url} → status={status} err={err_str}"
                   f" server={server} cf-ray={cf_ray}"
                   f" ct={content_type} cl={content_length}", flush=True)
