@@ -82,23 +82,33 @@ from PySide6.QtCore import Slot,QObject
 
 
 class BrowserLikeNAM(QNetworkAccessManager):
-    """QNetworkAccessManager that injects browser-like headers on every
-    outgoing request. Ankama's CDN was returning 403 for Qt's default
-    User-Agent on Windows (observed via the app.log).
+    """QNetworkAccessManager that injects browser-like headers on outgoing
+    requests to the Ankama CDN. Their WAF returns 403 for Qt's default
+    User-Agent on Windows (observed in app.log).
+
+    NOTE: createRequest may run on a Qt worker thread; avoid Python I/O
+    here (print, logging) as it can deadlock or crash the interpreter.
     """
     _UA = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        b"AppleWebKit/537.36 (KHTML, like Gecko) "
+        b"Chrome/120.0.0.0 Safari/537.36"
     )
+    _REFERER = b"https://www.wakfu.com/"
+    _TARGET_HOST = "static.ankama.com"
 
     def createRequest(self, op, req, outgoingData=None):
-        # Only override if not already set by the QML side.
-        if not req.hasRawHeader(b"User-Agent"):
-            req.setRawHeader(b"User-Agent", self._UA.encode("ascii"))
-        if not req.hasRawHeader(b"Referer"):
-            req.setRawHeader(b"Referer", b"https://www.wakfu.com/")
-        print(f"[http] {req.url().toString()}", flush=True)
+        try:
+            if req.url().host() == self._TARGET_HOST:
+                if not req.hasRawHeader(b"User-Agent"):
+                    req.setRawHeader(b"User-Agent", self._UA)
+                if not req.hasRawHeader(b"Referer"):
+                    req.setRawHeader(b"Referer", self._REFERER)
+        except Exception:
+            # Never let a header tweak block the actual network call.
+            pass
+        if outgoingData is None:
+            return super().createRequest(op, req)
         return super().createRequest(op, req, outgoingData)
 
 
