@@ -58,37 +58,34 @@ def restruct_item_into_id_map():
     settings.ACTION_DATA=resDict
 
 
-def isPrimaryWeapon(item):
+def _leaf_equip_positions(item):
+    """Return (positions, disabled_positions) of the item's leaf equipment
+    type. Handles both the 1.90- schema (info was inherited via parentId)
+    and the 1.92+ schema (parentId dropped, leaf carries the info directly).
+    """
+    type_id = item['definition']['item']['baseParameters'].get('itemTypeId')
+    entry = settings.EQUIPMENT_ITEM_TYPES_DATA.get(type_id)
+    if entry is None:
+        return [], []
+    definition = entry['definition']
+    positions = definition.get('equipmentPositions', [])
+    disabled = definition.get('equipmentDisabledPositions', [])
+    return positions, disabled
 
-    try:
-        equipmentType = settings.EQUIPMENT_ITEM_TYPES_DATA[settings.EQUIPMENT_ITEM_TYPES_DATA[item['definition']['item']['baseParameters']['itemTypeId']]['definition']['parentId']]
-        return 'FIRST_WEAPON' in equipmentType['definition']['equipmentPositions'] and not 'SECOND_WEAPON' in equipmentType['definition']['equipmentDisabledPositions']
-    #non weapon item have parent id 118 which does not exist
-    except KeyError:
-        return False
+
+def isPrimaryWeapon(item):
+    positions, disabled = _leaf_equip_positions(item)
+    return 'FIRST_WEAPON' in positions and 'SECOND_WEAPON' not in disabled
 
 
 def isSecondaryWeapon(item):
+    positions, _ = _leaf_equip_positions(item)
+    return 'SECOND_WEAPON' in positions
 
-    try:
-        equipmentType = settings.EQUIPMENT_ITEM_TYPES_DATA[settings.EQUIPMENT_ITEM_TYPES_DATA[item['definition']['item']['baseParameters']['itemTypeId']]['definition']['parentId']]
-        if 'SECOND_WEAPON' in equipmentType['definition']['equipmentPositions']:
-            return True
-        return False
-    #non weapon item have parent id 118 which does not exist
-    except KeyError:
-        return False
 
 def isTwoHanded(item):
-
-    try:
-        equipmentType = settings.EQUIPMENT_ITEM_TYPES_DATA[settings.EQUIPMENT_ITEM_TYPES_DATA[item['definition']['item']['baseParameters']['itemTypeId']]['definition']['parentId']]
-        if 'FIRST_WEAPON' in equipmentType['definition']['equipmentPositions'] and 'SECOND_WEAPON' in equipmentType['definition']['equipmentDisabledPositions']:
-            return True
-        return False
-    #non weapon item have parent id 118 which does not exist
-    except KeyError:
-        return False
+    positions, disabled = _leaf_equip_positions(item)
+    return 'FIRST_WEAPON' in positions and 'SECOND_WEAPON' in disabled
 
 
 def add_direct_weapon_type():
@@ -183,22 +180,21 @@ _SLOT_BY_TYPE_ID = {
     582: "PET",
     611: "MOUNT",
     646: "EMBLEM",
+    849: "PET",             # Porte-bonheur (1.92+) — shares the PET slot in-game
 }
-
-# Weapon typeIds share the FIRST_WEAPON / SECOND_WEAPON positions;
-# distinguishing 1H / 2H / off-hand needs the parent type id.
-_SLOT_BY_PARENT_ID = {
-    518: "FIRST_WEAPON_1H",
-    519: "FIRST_WEAPON_2H",
-    520: "SECOND_WEAPON",
-}
-
 
 def slot_of(item_id):
     """Return the logical slot key for an item id (see SLOT_ORDER).
 
-    Falls back to "OTHER" for items whose slot is not in SLOT_ORDER
-    (costumes, accessories, or unknown ids from stale saved builds).
+    Direct lookup by itemTypeId first (rings, armor pieces, pet, mount…).
+    For weapons — types that share FIRST_WEAPON / SECOND_WEAPON positions
+    — we distinguish 1H / 2H / off-hand from equipmentPositions +
+    equipmentDisabledPositions of the leaf type. This works for both the
+    pre-1.92 schema (had parentId) and the 1.92+ schema (parentId dropped,
+    leaf carries the discriminator directly).
+
+    Falls back to "OTHER" for slots not in SLOT_ORDER (costume, accessory,
+    unknown ids from stale saved builds).
     """
     item = settings.ITEMS_DATA.get(item_id)
     if item is None:
@@ -207,11 +203,12 @@ def slot_of(item_id):
     direct = _SLOT_BY_TYPE_ID.get(type_id)
     if direct is not None:
         return direct
-    type_entry = settings.EQUIPMENT_ITEM_TYPES_DATA.get(type_id)
-    if type_entry is None:
-        return "OTHER"
-    parent_id = type_entry["definition"].get("parentId")
-    return _SLOT_BY_PARENT_ID.get(parent_id, "OTHER")
+    positions, disabled = _leaf_equip_positions(item)
+    if 'FIRST_WEAPON' in positions:
+        return "FIRST_WEAPON_2H" if 'SECOND_WEAPON' in disabled else "FIRST_WEAPON_1H"
+    if 'SECOND_WEAPON' in positions:
+        return "SECOND_WEAPON"
+    return "OTHER"
 
 
 def gfx_id_of(item_id):

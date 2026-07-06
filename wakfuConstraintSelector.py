@@ -96,7 +96,13 @@ class WakfuConstraintSelector(QObject):
         self.stuffConstraints.append(createConstraintWithFunc(getEquipmentType,eqTypeEnum.CHEST) <= 1)
         self.stuffConstraints.append(createConstraintWithFunc(getEquipmentType,eqTypeEnum.SHOULDERS) <= 1)
         self.stuffConstraints.append(createConstraintWithFunc(getEquipmentType,eqTypeEnum.EMBLEMA) <= 1)
-        self.stuffConstraints.append(createConstraintWithFunc(getEquipmentType,eqTypeEnum.PET) <= 1)
+        # PET slot: familier (582) and porte-bonheur (849, added in 1.92)
+        # share the same in-game position → at most one across the two.
+        self.stuffConstraints.append(
+            createConstraintWithFunc(getEquipmentType, eqTypeEnum.PET)
+            + createConstraintWithFunc(getEquipmentType, eqTypeEnum.LUCKY_CHARM)
+            <= 1
+        )
         self.stuffConstraints.append(createConstraintWithFunc(getEquipmentType,eqTypeEnum.MOUNT) <= 1)
 
     #    #Epic / relic constraint

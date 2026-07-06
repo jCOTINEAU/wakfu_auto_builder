@@ -149,3 +149,10 @@ nuitka-crash-report.xml
 
 # Métier data (scraped game data)
 métier/
+
+# Project-scoped Claude Code skills should travel with the repo — the
+# outer .claude/ is ignored via ~/.gitignore_global, but skills/ is our
+# checked-in tooling.
+!.claude/
+.claude/*
+!.claude/skills/

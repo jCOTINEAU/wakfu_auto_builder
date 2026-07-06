@@ -1,6 +1,6 @@
 import enum
 
-DATA_VERSION = "1.90.1.48"
+DATA_VERSION = "1.92.1.59"
 
 def initGlobal():
     global ITEMS_DATA
@@ -41,6 +41,7 @@ class eqTypeEnum(enum.IntEnum):
     MOUNT = 611
     EMBLEMA = 646
     COSTUME = 647
+    LUCKY_CHARM = 849       # Porte-bonheur — added in Wakfu 1.92, occupies the PET slot
 
 #Should do parent stuff again
 #ACCESSORY=480 / ACCESSORY=537 / EMBLEMA = 646
