@@ -3,17 +3,29 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import WakfuBuildComparison
 import WakfuItemDetail
+import WakfuBuildDetails
 
 Item {
     anchors.fill: parent
     id: comparisonPage
 
+    // View mode: "perLine" (default, existing table view) or "cumulated"
+    // (two BuildDetailsPanel side by side).
+    property string viewMode: "perLine"
+
     WakfuBuildComparison {
         id: comparisonModel
     }
 
+    // Two build detail models — populated on compare(), used by the
+    // cumulated view. Panels sync their toggles via syncPartner.
+    WakfuBuildDetails { id: detailsA }
+    WakfuBuildDetails { id: detailsB }
+
     function compare(idA, idB) {
         comparisonModel.compareByIds(idA, idB)
+        detailsA.loadBuild(idA)
+        detailsB.loadBuild(idB)
     }
 
     ColumnLayout {
@@ -22,36 +34,87 @@ Item {
         anchors.bottomMargin: compBackBtn.height + 32
         spacing: 16
 
-        // ── Header ──
-        ColumnLayout {
+        // ── Header + mode toggle ──
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 16
 
-            Text {
-                text: "Comparaison de builds"
-                color: mainPage.accent
-                font.pixelSize: 22
-                font.bold: true
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Text {
+                    text: "Comparaison de builds"
+                    color: mainPage.accent
+                    font.pixelSize: 22
+                    font.bold: true
+                }
+
+                RowLayout {
+                    spacing: 8
+                    Text {
+                        text: comparisonModel.nameA
+                        color: "#6eb5ff"
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                    Text {
+                        text: "vs"
+                        color: mainPage.textMuted
+                        font.pixelSize: 15
+                    }
+                    Text {
+                        text: comparisonModel.nameB
+                        color: "#ffb86e"
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                }
             }
 
-            RowLayout {
-                spacing: 8
-                Text {
-                    text: comparisonModel.nameA
-                    color: "#6eb5ff"
-                    font.pixelSize: 15
-                    font.bold: true
+            // Mode toggle: perLine ↔ cumulated
+            Row {
+                spacing: 0
+
+                Rectangle {
+                    width: 130; height: 34
+                    radius: 6
+                    color: comparisonPage.viewMode === "perLine" ? mainPage.accent : mainPage.bgInput
+                    border.color: mainPage.accent
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Ligne par ligne"
+                        color: comparisonPage.viewMode === "perLine" ? "#0f0f1a" : mainPage.accent
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: comparisonPage.viewMode = "perLine"
+                    }
                 }
-                Text {
-                    text: "vs"
-                    color: mainPage.textMuted
-                    font.pixelSize: 15
-                }
-                Text {
-                    text: comparisonModel.nameB
-                    color: "#ffb86e"
-                    font.pixelSize: 15
-                    font.bold: true
+                Rectangle {
+                    width: 130; height: 34
+                    radius: 6
+                    color: comparisonPage.viewMode === "cumulated" ? mainPage.accent : mainPage.bgInput
+                    border.color: mainPage.accent
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Cumulé"
+                        color: comparisonPage.viewMode === "cumulated" ? "#0f0f1a" : mainPage.accent
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: comparisonPage.viewMode = "cumulated"
+                    }
                 }
             }
         }
@@ -62,9 +125,10 @@ Item {
             color: mainPage.border
         }
 
-        // ── Stat Delta Table ──
+        // ── Stat Delta Table (per-line mode) ──
         Rectangle {
             id: statCard
+            visible: comparisonPage.viewMode === "perLine"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: parent.height * 0.6
@@ -230,8 +294,9 @@ Item {
             }
         }
 
-        // ── Item Differences (per-slot table) ──
+        // ── Item Differences (per-slot table, per-line mode) ──
         Rectangle {
+            visible: comparisonPage.viewMode === "perLine"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: parent.height * 0.3
@@ -503,6 +568,73 @@ Item {
                                 : "transparent"
                             font.pixelSize: 14
                             font.bold: true
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Cumulated view (side-by-side BuildDetailsPanel) ──
+        Item {
+            visible: comparisonPage.viewMode === "cumulated"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            Flickable {
+                anchors.fill: parent
+                contentHeight: cumulRow.implicitHeight
+                clip: true
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                RowLayout {
+                    id: cumulRow
+                    width: parent.width - 12   // scrollbar reserve
+                    spacing: 12
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        spacing: 8
+                        Text {
+                            text: comparisonModel.nameA
+                            color: "#6eb5ff"
+                            font.pixelSize: 15
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        BuildDetailsPanel {
+                            Layout.fillWidth: true
+                            model: detailsA
+                            syncPartner: detailsB
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        Layout.fillHeight: true
+                        color: mainPage.border
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        spacing: 8
+                        Text {
+                            text: comparisonModel.nameB
+                            color: "#ffb86e"
+                            font.pixelSize: 15
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        BuildDetailsPanel {
+                            Layout.fillWidth: true
+                            model: detailsB
+                            syncPartner: detailsA
                         }
                     }
                 }
