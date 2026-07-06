@@ -72,10 +72,20 @@ class TestDistributeVariableBonus:
         # First 2 in canonical order among chosen: fire, water
         assert result == {"fire": 50, "water": 50}
 
-    def test_zero_chosen_falls_back_to_all(self):
-        """No chosen elements: spread across all 4 as default."""
+    def test_zero_chosen_no_distribution(self):
+        """No chosen elements: variable bonuses are 'pending' — don't
+        distribute anything, so per-element display isn't flattened by
+        phantom bonuses. User must pick at least one element to unlock
+        the variable-bonus contribution."""
         rr = [0]
         result = _distribute_variable_bonus(50, 2, set(), rr)
+        assert result == {}
+
+    def test_zero_chosen_still_all_when_N_geq_4(self):
+        """N>=4 means 'applies to all 4' regardless of the user's choice —
+        that bonus is unambiguous."""
+        rr = [0]
+        result = _distribute_variable_bonus(50, 4, set(), rr)
         assert result == {"fire": 50, "water": 50, "air": 50, "earth": 50}
 
 

@@ -97,8 +97,11 @@ def _distribute_variable_bonus(value, N, chosen_elements, rr_counter):
         return {e: value for e in ELEM_ORDER}
 
     if U == 0:
-        # No chosen elements: fall back to spreading over all 4.
-        return {e: value for e in ELEM_ORDER}
+        # No chosen elements yet — the user hasn't picked where variable
+        # "X in N" bonuses should land, so we skip them entirely.
+        # Otherwise every element would show the same phantom bonus,
+        # flattening the display and hiding real per-element differences.
+        return {}
 
     if N >= U:
         # Case B: all chosen + (N-U) non-chosen (canonical order).

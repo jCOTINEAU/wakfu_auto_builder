@@ -120,6 +120,7 @@ class WakfuStatProfileManager(QAbstractListModel):
         self._editing_stats = dict(DEFAULT_STATS)
         self._editing_id = ""
         self._zenith_url = ""
+        self.editingStatsChanged.emit()
 
     @Slot(str)
     def loadForEditing(self, profile_id):
@@ -132,6 +133,7 @@ class WakfuStatProfileManager(QAbstractListModel):
                     self._editing_stats[k] = v
             self._editing_id = profile_id
             self._zenith_url = profile.get("zenith_url", "")
+            self.editingStatsChanged.emit()
 
     @Slot(str, result=int)
     def getEditingStat(self, key):
