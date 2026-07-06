@@ -60,6 +60,11 @@ ApplicationWindow {
         visible: false
     }
 
+    BuildDetails {
+        id: buildDetailsPage
+        visible: false
+    }
+
     // ── Version badge ──
     Text {
         anchors.left: parent.left

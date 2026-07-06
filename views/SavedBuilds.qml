@@ -316,6 +316,37 @@ Item {
                         }
                     }
 
+                    // Details button — cumulated stats view
+                    Rectangle {
+                        width: 80
+                        height: 34
+                        radius: 6
+                        color: detailsBtnMouse.containsMouse ? Qt.lighter(mainPage.bgInput, 1.4) : mainPage.bgInput
+                        border.color: mainPage.accent
+                        border.width: 1
+
+                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Détails"
+                            color: mainPage.accent
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            id: detailsBtnMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                buildDetailsPage.open(buildId, savedBuildsPage)
+                                savedBuildsPage.visible = false
+                            }
+                        }
+                    }
+
                     // Load button
                     Rectangle {
                         width: 80
